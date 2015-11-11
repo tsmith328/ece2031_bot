@@ -277,6 +277,61 @@ inCol1:
     STORE Col1L
     
     
+inCol1:
+    LOAD Col1Counter ;load counter for number of points in col1
+    ADDI 1           ; add 1
+    STORE Col1Counter; store counter
+    
+    ILOAD scaleI     ; load the x value of the point 
+    STORE PointBufferX ; store the x value into the x buffer
+    
+    ILOAD Col1X   ; load the x value for the next col1 storing location
+    ISTORE scaleI ; store the col1x value into the x point array
+    
+    LOAD scaleI   ; load the address of the point that is being added to col1
+    ADDI 12       ; add 12 to get the address of the y value
+    STORE X       ; store into temp variable x
+    
+    LOAD PointBufferY
+    ISTORE Col1Y
+    
+    ILOAD X       ; load the y value of the point being added to col1
+    STORE PointBufferY ; store the y value of the point into the buffer
+    
+    ILOAD Col1Y        ; load the y value of Y01
+    ISTORE X           ; store into the y value being moved from Y01
+    
+    LOAD X       ; load the current address of the point that is being added to col1
+    ADDI 12      ; add 12 to get the address for the location array
+    STORE X      ; store the address of the point in the location array
+    
+    ILOAD X      ; load the address from the location array
+    STORE PointBufferL ; store into the point location buffer
+    
+    ILOAD Col1L  ; load the location of point 1 
+    ISTORE X     ; store the location of point 1 into its new home
+    
+
+    
+    LOAD PointBufferY
+    
+    
+;    ILOAD scaleI
+;    ISTORE Col1X
+
+    LOAD Col1X
+    ADDI 1
+    STORE Col1X
+    
+    LOAD Col1Y
+    ADDI 1
+    STORE Col1Y
+    
+    LOAD Col1L
+    ADDI 1
+    STORE Col1L
+    
+    
     
     
     
