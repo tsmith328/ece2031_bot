@@ -6,8 +6,8 @@ i = 1
 
 #Read in the points
 for line in f:
-	line.strip('\n')
-	line.split(',')
+	line = line.rstrip('\n')
+	line = line.split(',')
 	points.append((i, line[0], line[1]))
 	i += 1
 
@@ -35,6 +35,7 @@ cols = [(col, len(col)) for col in [col1, col2, col3, col4]]
 cols = sorted(cols, key = lambda x: x[1])
 
 for col in cols:
+	print col
 	col = sorted(col, key = lambda x: x[2])
 
 for i in range(len(cols)):
@@ -62,6 +63,6 @@ f.write("Points: DW X%02d\n" %(points[0][0],))
 #Write list of point labels
 f.write("\n")
 for i in range(len(points)):
-	f.write("Pnt%02d: DW X%02d\n" %(i+1, points[i][0])
+	f.write("Pnt%02d: DW X%02d\n" %(i+1, points[i][0]))
 
 f.close()
