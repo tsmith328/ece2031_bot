@@ -1,13 +1,11 @@
 def sort():
     f = open("points.txt", "r")
-
     points = []
-
     i = 1
 
     #Read in the points
     for line in f:
-        line = line.rstrip('\n')
+        line = line.rstrip()
         line = line.split(',')
         points.append((i, line[0], line[1]))
         i += 1
@@ -30,16 +28,12 @@ def sort():
             col4.append(point)
 
     #Sort columns by number of points
-
     cols = [(col, len(col)) for col in [col1, col2, col3, col4]]
-
     cols = sorted(cols, key = lambda x: x[1])
-
     cols.reverse()
 
     #Sort points within each column
     cols = [sorted(col[0], key=lambda x: float(x[2])) for col in cols]
-
 
     #Reverse every other column for back-and-forth
     for i in range(len(cols)):
@@ -50,7 +44,6 @@ def sort():
 
     #print points
     f = open("points_out.txt", "w")
-
     f.write("SORT_THIS_SHIT:\n")
 
     #Write list of X values
@@ -72,5 +65,23 @@ def sort():
 
     f.close()
 
+def main():
+    asm = open("movement_code.asm", "r")
+    out = open("robot.asm", "w")
+    points = open("points_out.txt", "r")
+
+    #Copy assembly code to new file except where points need to be
+    for line in asm:
+        if line.rstrip() == ";Put points here":
+            for pline in points:
+                out.write(pline)
+        else:
+            out.write(line)
+
+    asm.close()
+    out.close()
+    points.close()
+
 if __name__ == "__main__":
     sort()
+    main()

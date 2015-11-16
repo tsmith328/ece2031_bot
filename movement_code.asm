@@ -80,49 +80,7 @@ Main: ; "Real" program starts here.
 	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
 	CALL   UARTClear   ; empty the UART receive FIFO of any old data
 
-SORT_THIS_SHIT:
-
-X01: DW &H0000
-X02: DW &H0000
-X03: DW &H0000
-X04: DW &H0000
-X05: DW &H0000
-X06: DW &H0000
-X07: DW &H0000
-X08: DW &H0000
-X09: DW &H0000
-X10: DW &H0000
-X11: DW &H0000
-X12: DW &H0000
-
-
-Y01: DW &H0000
-Y02: DW &H0000
-Y03: DW &H0000
-Y04: DW &H0000
-Y05: DW &H0000
-Y06: DW &H0000
-Y07: DW &H0000
-Y08: DW &H0000
-Y09: DW &H0000
-Y10: DW &H0000
-Y11: DW &H0000
-Y12: DW &H0000
-
-Points: DW X01
-
-Pnt01: DW X01
-Pnt02: DW X02
-Pnt03: DW X03
-Pnt04: DW X04
-Pnt05: DW X05
-Pnt06: DW X06
-Pnt07: DW X07
-Pnt08: DW X08
-Pnt09: DW X09
-Pnt10: DW X10
-Pnt11: DW X11
-Pnt12: DW X12
+;Put points here
 
 i: DW &H000C
 j: DW &H0000
