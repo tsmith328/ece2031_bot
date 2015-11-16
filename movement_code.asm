@@ -1,5 +1,5 @@
-; StartingCodeWithLog.asm
-; Created by Kevin Johnson
+; robot_code.asm
+; Created by Team CEEE with subroutines provided by Kevin Johnson
 ; (no copyright applied; edit freely, no attribution necessary)
 ; This program includes:
 ; - Wireless position logging using timer interrupt
@@ -8,8 +8,7 @@
 ; -- 16/16 signed division
 ; -- Arctangent (in appropriate robot units)
 ; -- Distance (L2 norm) approximation
-; - Example of using tables (ILOAD, ISTORE)
-; - Additional misc. examples
+; - Code for ECE 2031 Fall 2015 Final Project
 
 
 ;***************************************************************
@@ -85,164 +84,11 @@ Main: ; "Real" program starts here.
 i: DW &H000C
 j: DW &H0000
 
-scaleI: DW X01
-scaleCount: DW &H0000
+; Can scale points in Python or here. Just comment out correct lines
+; (Python converts to ticks also)
+;CALL Scale             ; Scales points from Ft to MM
 
-Columns: ;ordered form left to right
-col1LowX: DW -1524   ; -5ft
-col1LowY: DW -1829	 ; -6ft
-col1HighX: DW -762	 ; -2.5ft
-col1HighY: DW 1829	 ; 6ft
-
-col2LowX: DW  -762   ; -2.5 ft
-col2LowY: DW  -1829  ; -6ft 
-col2HighX: DW 0		 ; 0ft
-col2HighY: DW 1829   ; 6ft
-
-col3LowX: DW 0		 ; 0ft
-col3LowY: DW -1829   ; -6ft
-col3HighX: DW 762    ; 2.5ft
-col3HighY: DW 1829   ; 6ft
-
-col4LowX: DW 762     ; 2.5ft
-col4LowY: DW -1829   ; -6ft
-col4HighX: DW 1524   ; 5ft
-col4HighY: DW 1829   ; 6ft
-
-col1Start: DW Buffer00
-col1End:   DW &H0000
-
-col2Start: DW &H0000
-col2End:   DW &H0000
-
-col3Start: DW &H0000
-col3End:   DW &H0000
-
-col4Start: DW &H0000
-col4End:   DW Buffer12
-
-FTtoMM:  DW 305
-
-; Set values for converting to mm
-LOAD FTtoMM
-STORE ms16sA
-;LOAD Zero
-;ADDi 10
-;STORE d16sD
-
-; Scales the points from FT to MM --------------------------------------------------
-Scale: Load scaleCount
-addi -23
-jzero Sort
-ILOAD scaleI
-STORE ms16sB
-CALL Mult16s
-LOAD mres16sL
-;STORE d16sN
-;CALL Div16s
-;LOAD dres16sQ
-ISTORE scaleI
-LOAD scaleI
-ADDi 1
-STORE scaleI
-LOAD scaleCount
-ADDi 1
-STORE scaleCount
-Jump Scale
-; Finished Scaling Points ------------------------------------------------------------
-
-Col1Counter: DW &H0000
-Col1StartX:   DW X01
-Col1X:        DW X01
-Col1StartY:   DW Y01
-Col1Y:        DW Y01
-Col1L:        DW Pnt01
-PointBufferX: DW &H0000
-PointBufferY: DW &H0000
-PointBuggerL: DW &H0000
-X: DW &H0000
-Y: DW &H0000
-Sort:    
-    LOAD POINTS
-    STORE scaleI
-    LOAD ZERO
-    STORE scaleCount
-    
-Col1:
-    LOAD col1HighX
-    STORE eq1
-    ILOAD scaleI
-    STORE eq2
-    CALL isEqual
-    LOAD eqOUT
-    JNEG inCol1
-    JZERO inCol1
-    JPOS  Col1
-    
-    
-inCol1:
-    LOAD Col1Counter ;load counter for number of points in col1
-    ADDI 1           ; add 1
-    STORE Col1Counter; store counter
-    
-    ILOAD scaleI     ; load the x value of the point 
-    STORE PointBufferX ; store the x value into the x buffer
-    
-    ILOAD Col1X   ; load the x value for the next col1 storing location
-    ISTORE scaleI ; store the col1x value into the x point array
-    
-    LOAD scaleI   ; load the address of the point that is being added to col1
-    ADDI 12       ; add 12 to get the address of the y value
-    STORE X       ; store into temp variable x
-    
-    LOAD PointBufferY
-    ISTORE Col1Y
-    
-    ILOAD X       ; load the y value of the point being added to col1
-    STORE PointBufferY ; store the y value of the point into the buffer
-    
-    ILOAD Col1Y        ; load the y value of Y01
-    ISTORE X           ; store into the y value being moved from Y01
-    
-    LOAD X       ; load the current address of the point that is being added to col1
-    ADDI 12      ; add 12 to get the address for the location array
-    STORE X      ; store the address of the point in the location array
-    
-    ILOAD X      ; load the address from the location array
-    STORE PointBufferL ; store into the point location buffer
-    
-    ILOAD Col1L  ; load the location of point 1 
-    ISTORE X     ; store the location of point 1 into its new home
-    
-
-    
-    LOAD PointBufferY
-    
-    
-;    ILOAD scaleI
-;    ISTORE Col1X
-
-    LOAD Col1X
-    ADDI 1
-    STORE Col1X
-    
-    LOAD Col1Y
-    ADDI 1
-    STORE Col1Y
-    
-    LOAD Col1L
-    ADDI 1
-    STORE Col1L
-    
-    
-    
-    
-    
-    
-    
-    
 ; Go to position
-; Code by Tyler Smith
 ; Moves the robot to an X,Y position
 GoTo:
     IN Xpos
@@ -256,39 +102,7 @@ GoTo:
     STORE AtanY        ; Save dY for atan
     CALL atan2
     STORE angle        ; Save angle to next point
-    
-; Start with simple point-and-shoot    
-TurnTo:
-    ; Turns to point towards a certain angle
-    IN THETA
-    SUB angle
-    JNEG turnleft      ; If difference is negative: need to turn left
-turnright:
-    SUB Deadzone       ; If within deadzone, don't turn
-    JNEG move
-right_loop:
-    LOAD FSlow
-    OUT LVelcmd        ; Turn left wheel forward
-    LOAD RSlow
-    OUT Rvelcmd        ; Turn right wheel bkwd
-    IN THETA
-    SUB angle
-    SUB Deadzone       ; If w/in deadzone, stop turning
-    JNEG move
-    JUMP right_loop
-turnleft:
-    ADD Deadzone       ; If within deadzone, don't turn
-    JPOS move
-left_loop:
-    LOAD FSlow
-    OUT RVelcmd        ; Turn right wheel forward
-    LOAD RSlow
-    OUT Lvelcmd        ; Turn left wheel bkwd
-    IN THETA
-    SUB angle
-    ADD Deadzone       ; If w/in deadzone, stop turning
-    JNEG move
-    JUMP left_loop
+    CALL TurnTo
     
 move:                  ; Start moving
     IN Xpos
@@ -317,7 +131,7 @@ atPoint:               ; Made it to the point. Announce and get next point
     ; Get next point. need to know how they're stored
     
 Deadzone: DW 5  
-Goalzone: DW 90        ; 4 inches: 96 ticks
+Goalzone: DW 90        ; 4 inches: 96 ticks (102mm)
 X:      DW 0
 Y:      DW 0
 angle:  DW 0
@@ -343,7 +157,7 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 ;* Subroutines
 ;***************************************************************
 
-; **************************************************************
+;***************************************************************
 ; Calculates difference in provided X and Y positions
 ; and X and Y of next point to visit. Requires abs subrouting
 ; Usage: Store X and Y in X and Y
@@ -363,6 +177,78 @@ calc_dxdy:
 
 dY: DW 0
 dX: DW 0
+
+;***************************************************************
+; Turns the robot to face a heading
+; Usage: Store desired angle in angle
+;        Call TurnTo
+;        Returns after robot has turned
+;***************************************************************
+; TODO: USE OVERSHOOT CALCULATION IN MANUAL
+TurnTo:
+    ; Determine direction to turn
+    IN THETA
+    STORE eq2
+    LOAD angle
+    STORE eq1
+    CALL compare    ; Compares desired and current angles
+    LOAD eqOut
+    STORE TurnTemp
+    IN THETA
+    SUB angle
+    STORE eq1
+    LOAD Deg180
+    STORE eq2
+    CALL compare    ; Compares difference and 180 deg.
+    LOAD eqOut
+    SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
+    JZERO turnleft
+turnright:
+
+turnleft:
+    
+TurnRet:
+    RETURN
+
+TurnTemp:   DW 0
+
+;***************************************************************
+; Scales the points from Feet to MM
+; Usage: Store points in tables
+;        Call scale
+;        Points are scaled in-place
+;***************************************************************
+Scale:  
+    Load scaleCount ; Number of points scaled
+    ADDI -23
+    JZERO ScaleRet  ; Return after looping through all points
+    LOAD FTtoMM     ; Prime multiplier with factor
+    STORE ms16sA    ; /
+    ILOAD scaleI    ; Get next point
+    STORE ms16sB    ; Multiply by factor
+    CALL Mult16s    ; |
+    LOAD mres16sL   ; /
+    ;STORE d16sN
+    ;CALL Div16s
+    ;LOAD dres16sQ
+    ISTORE scaleI   ; Store scaled point
+    LOAD scaleI     ; Increment pointer
+    ADDI 1          ; |
+    STORE scaleI    ; /
+    LOAD scaleCount ; Increment count
+    ADDI 1          ; |
+    STORE scaleCount; /
+    Jump Scale      ; Loop
+ScaleRet:
+    RETURN
+
+scaleI:     DW X01
+scaleCount: DW &H0000
+FTtoMM:     DW 305
+; Set values for converting to mm
+;LOAD Zero
+;ADDi 10
+;STORE d16sD
 
 ; Subroutine to wait (block) for 1 second
 Wait1:
@@ -837,31 +723,34 @@ dres16sQ: DW 0 ; quotient result
 dres16sR: DW 0 ; remainder result
 
 ;*******************************************************************************
-; isEqual:
-; checks value in eq1 and eq2 are equal
-; if eq1 is greater then eq2 output 1
+; compare:
+; Compares values in eq1 and eq2
+; if eq1 is greater than eq2 output 1
 ; if values are equal output 0
-; if eq1 is lower then eq2 output -1
-; output is stored in eqOut
+; if eq1 is lower than eq2 output -1
+; Usage:
+;   Store values to compare in eq1 and eq2
+;   Call compare
+;   Output is stored in eqOut
 ;*******************************************************************************
 
-isEqual: 
+compare: 
     LOAD eq1
     sub  eq2
-    jzero Equal
-    jpos  POS
-    jneg  NEG
+    jzero compEqual
+    jpos  compPos
+    jneg  compNeg
 
-Equal:
+compEqual:
     LOAD ZERO
     STORE eqOut
     RETURN
     
-Neg:
+compNeg:
     LOADI -1
     STORE eqOut
     RETURN
-Pos:
+compPos:
     LOADI 1
     STORE eqOut
     RETURN
