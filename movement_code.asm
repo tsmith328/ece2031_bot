@@ -81,8 +81,12 @@ Main: ; "Real" program starts here.
 
 ;Put points here
 
-i: DW &H000C
-j: DW &H0000
+i: DW 0
+j: DW Y01
+
+xptr: DW X01
+yptr: DW Y01
+lptr: DW Points
 
 ; Can scale points in Python or here. Just comment out correct lines
 ; (Python converts to ticks also)
@@ -126,9 +130,23 @@ atPoint:               ; Made it to the point. Announce and get next point
     LOADI 0
     OUT RVelcmd
     OUT LVelcmd        ; stop (or at least slow down)
-    LOAD ptr           ; Need to know which point
+    ILOAD lptr           ; Need to know which point
     CALL IndicateDest 
-    ; Get next point. need to know how they're stored
+    LOAD xptr          ; Increment pointers
+    ADDI 1
+    STORE xptr
+    LOAD yptr
+    ADDI 1
+    STORE yptr
+    LOAD lptr
+    ADDI 1
+    STORE lptr
+    LOAD i             ; After all points, stop
+    ADDI 1
+    STORE i
+    ADDI -12
+    JZERO Die
+    JUMP GoTo
     
 Deadzone: DW 5  
 Goalzone: DW 90        ; 4 inches: 96 ticks (102mm)
@@ -204,9 +222,27 @@ TurnTo:
     SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
     JZERO turnleft
 turnright:
-
+    IN theta
+    SUB angle
+    CALL abs
+    SUB Deadzone    ; If difference less than deadzone, don't turn
+    JNEG TurnRet
+    LOAD Fslow
+    OUT LVelcmd
+    LOAD RSlow
+    OUT RVelcmd
+    JUMP turnright
 turnleft:
-    
+    IN theta
+    SUB angle
+    CALL abs
+    SUB Deadzone    ; If difference less than deadzone, don't turn
+    JNEG TurnRet
+    LOAD Rslow
+    OUT LVelcmd
+    LOAD FSlow
+    OUT RVelcmd
+    JUMP turnleft
 TurnRet:
     RETURN
 

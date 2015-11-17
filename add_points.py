@@ -58,12 +58,12 @@ def sort():
         f.write("Y%02d: DW %s\n" % (i+1, points[i][2]))
 
     f.write("\n")
-    f.write("Points: DW X%02d\n" %(points[0][0],))
+    f.write("Points:\n")
 
     #Write list of point labels
     f.write("\n")
     for i in range(len(points)):
-        f.write("Pnt%02d: DW X%02d\n" %(i+1, points[i][0]))
+        f.write("DW %02d\n" %(points[i][0]))
 
     f.close()
 
@@ -73,7 +73,7 @@ def scale():
     for line in pts:
         if line[0] in ["X","Y"]: #If line is a coord
             label, num = line.rstrip().split(":")
-            label = label + " DW "
+            label = label + ": DW "
             num = int(num[4:])
             num *= 305
             num = round(float(num) / 1.05)
