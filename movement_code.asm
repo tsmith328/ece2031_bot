@@ -259,9 +259,9 @@ Scale:
     ADDI -23
     JZERO ScaleRet  ; Return after looping through all points
     LOAD FTtoMM     ; Prime multiplier with factor
-    STORE ms16sA    ; /
+    STORE m16sA     ; /
     ILOAD scaleI    ; Get next point
-    STORE ms16sB    ; Multiply by factor
+    STORE m16sB     ; Multiply by factor
     CALL Mult16s    ; |
     LOAD mres16sL   ; /
     ;STORE d16sN
