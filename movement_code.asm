@@ -106,7 +106,13 @@ GoTo:
     STORE AtanY        ; Save dY for atan
     CALL atan2
     STORE angle        ; Save angle to next point
+	OUT SSEG1
     CALL TurnTo
+	LOAD ZERO
+	OUT RVelcmd
+	OUT LVelcmd
+	CALL WAIT1
+	;JUMP Die
     
 move:                  ; Start moving
     IN Xpos
@@ -119,10 +125,12 @@ move:                  ; Start moving
     LOAD dY
     STORE L2Y
     CALL L2Estimate    ; Get distance to point
+    OUT SSEG1          ; Display distance
     SUB Goalzone
     JNEG atPoint       ; Within goal.
     LOAD Fmid
     OUT RVelcmd
+	ADDI -15		   ; For robot #69.
     OUT LVelcmd        ; Move towards point
     JUMP move
 
@@ -144,7 +152,7 @@ atPoint:               ; Made it to the point. Announce and get next point
     LOAD i             ; After all points, stop
     ADDI 1
     STORE i
-    ADDI -12
+    ADDI -2
     JZERO Die
     JUMP GoTo
     
@@ -185,11 +193,9 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 calc_dxdy:
     ILOAD xptr  ; Load next point's X-value
     SUB X
-    CALL abs    ; Get absolute value
     STORE dX    ; Store result
     ILOAD yptr  ; Load next point's Y-value
     SUB Y
-    CALL abs    ; Get abs value
     STORE dY    ; Store result
     RETURN
 
@@ -202,10 +208,10 @@ dX: DW 0
 ;        Call TurnTo
 ;        Returns after robot has turned
 ;***************************************************************
-; TODO: USE OVERSHOOT CALCULATION IN MANUAL
 TurnTo:
     ; Determine direction to turn
     IN THETA
+	OUT SSEG2
     STORE eq2
     LOAD angle
     STORE eq1
@@ -214,15 +220,19 @@ TurnTo:
     STORE TurnTemp
     IN THETA
     SUB angle
+	CALL abs
     STORE eq1
     LOAD Deg180
     STORE eq2
     CALL compare    ; Compares difference and 180 deg.
     LOAD eqOut
     SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
-    JZERO turnleft
+	OUT LCD
+    JZERO turnright
+	JUMP turnleft
 turnright:
     IN theta
+	OUT SSEG2
     SUB angle
     CALL abs
     SUB Deadzone    ; If difference less than deadzone, don't turn
@@ -234,6 +244,7 @@ turnright:
     JUMP turnright
 turnleft:
     IN theta
+	OUT SSEG2
     SUB angle
     CALL abs
     SUB Deadzone    ; If difference less than deadzone, don't turn
