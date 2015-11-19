@@ -1,5 +1,5 @@
-; StartingCodeWithLog.asm
-; Created by Kevin Johnson
+; robot_code.asm
+; Created by Team CEEE with subroutines provided by Kevin Johnson
 ; (no copyright applied; edit freely, no attribution necessary)
 ; This program includes:
 ; - Wireless position logging using timer interrupt
@@ -8,8 +8,7 @@
 ; -- 16/16 signed division
 ; -- Arctangent (in appropriate robot units)
 ; -- Distance (L2 norm) approximation
-; - Example of using tables (ILOAD, ISTORE)
-; - Additional misc. examples
+; - Code for ECE 2031 Fall 2015 Final Project
 
 
 ;***************************************************************
@@ -80,35 +79,20 @@ Main: ; "Real" program starts here.
 	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
 	CALL   UARTClear   ; empty the UART receive FIFO of any old data
 
-SORT_THIS_SHIT:
+;Put points here
 
-X01: DW &H0000
-X02: DW &H0000
-X03: DW &H0000
-X04: DW &H0000
-X05: DW &H0000
-X06: DW &H0000
-X07: DW &H0000
-X08: DW &H0000
-X09: DW &H0000
-X10: DW &H0000
-X11: DW &H0000
-X12: DW &H0000
+i: DW 0
+j: DW Y01
 
+xptr: DW X01
+yptr: DW Y01
+lptr: DW Points
 
-Y01: DW &H0000
-Y02: DW &H0000
-Y03: DW &H0000
-Y04: DW &H0000
-Y05: DW &H0000
-Y06: DW &H0000
-Y07: DW &H0000
-Y08: DW &H0000
-Y09: DW &H0000
-Y10: DW &H0000
-Y11: DW &H0000
-Y12: DW &H0000
+; Can scale points in Python or here. Just comment out correct lines
+; (Python converts to ticks also)
+;CALL Scale             ; Scales points from Ft to MM
 
+<<<<<<< HEAD
 Points: DW X01
 
 Pnt01: DW X01
@@ -338,8 +322,9 @@ inCol1:
     
     
     
+=======
+>>>>>>> origin/master
 ; Go to position
-; Code by Tyler Smith
 ; Moves the robot to an X,Y position
 GoTo:
     IN Xpos
@@ -353,39 +338,13 @@ GoTo:
     STORE AtanY        ; Save dY for atan
     CALL atan2
     STORE angle        ; Save angle to next point
-    
-; Start with simple point-and-shoot    
-TurnTo:
-    ; Turns to point towards a certain angle
-    IN THETA
-    SUB angle
-    JNEG turnleft      ; If difference is negative: need to turn left
-turnright:
-    SUB Deadzone       ; If within deadzone, don't turn
-    JNEG move
-right_loop:
-    LOAD FSlow
-    OUT LVelcmd        ; Turn left wheel forward
-    LOAD RSlow
-    OUT Rvelcmd        ; Turn right wheel bkwd
-    IN THETA
-    SUB angle
-    SUB Deadzone       ; If w/in deadzone, stop turning
-    JNEG move
-    JUMP right_loop
-turnleft:
-    ADD Deadzone       ; If within deadzone, don't turn
-    JPOS move
-left_loop:
-    LOAD FSlow
-    OUT RVelcmd        ; Turn right wheel forward
-    LOAD RSlow
-    OUT Lvelcmd        ; Turn left wheel bkwd
-    IN THETA
-    SUB angle
-    ADD Deadzone       ; If w/in deadzone, stop turning
-    JNEG move
-    JUMP left_loop
+	OUT SSEG1
+    CALL TurnTo
+	LOAD ZERO
+	OUT RVelcmd
+	OUT LVelcmd
+	CALL WAIT1
+	;JUMP Die
     
 move:                  ; Start moving
     IN Xpos
@@ -398,10 +357,12 @@ move:                  ; Start moving
     LOAD dY
     STORE L2Y
     CALL L2Estimate    ; Get distance to point
+    OUT SSEG1          ; Display distance
     SUB Goalzone
     JNEG atPoint       ; Within goal.
     LOAD Fmid
     OUT RVelcmd
+	ADDI -15		   ; For robot #69.
     OUT LVelcmd        ; Move towards point
     JUMP move
 
@@ -409,12 +370,26 @@ atPoint:               ; Made it to the point. Announce and get next point
     LOADI 0
     OUT RVelcmd
     OUT LVelcmd        ; stop (or at least slow down)
-    LOAD ptr           ; Need to know which point
+    ILOAD lptr           ; Need to know which point
     CALL IndicateDest 
-    ; Get next point. need to know how they're stored
+    LOAD xptr          ; Increment pointers
+    ADDI 1
+    STORE xptr
+    LOAD yptr
+    ADDI 1
+    STORE yptr
+    LOAD lptr
+    ADDI 1
+    STORE lptr
+    LOAD i             ; After all points, stop
+    ADDI 1
+    STORE i
+    ADDI -2
+    JZERO Die
+    JUMP GoTo
     
 Deadzone: DW 5  
-Goalzone: DW 90        ; 4 inches: 96 ticks
+Goalzone: DW 90        ; 4 inches: 96 ticks (102mm)
 X:      DW 0
 Y:      DW 0
 angle:  DW 0
@@ -440,7 +415,7 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 ;* Subroutines
 ;***************************************************************
 
-; **************************************************************
+;***************************************************************
 ; Calculates difference in provided X and Y positions
 ; and X and Y of next point to visit. Requires abs subrouting
 ; Usage: Store X and Y in X and Y
@@ -450,16 +425,109 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 calc_dxdy:
     ILOAD xptr  ; Load next point's X-value
     SUB X
-    CALL abs    ; Get absolute value
     STORE dX    ; Store result
     ILOAD yptr  ; Load next point's Y-value
     SUB Y
-    CALL abs    ; Get abs value
     STORE dY    ; Store result
     RETURN
 
 dY: DW 0
 dX: DW 0
+
+;***************************************************************
+; Turns the robot to face a heading
+; Usage: Store desired angle in angle
+;        Call TurnTo
+;        Returns after robot has turned
+;***************************************************************
+TurnTo:
+    ; Determine direction to turn
+    IN THETA
+	OUT SSEG2
+    STORE eq2
+    LOAD angle
+    STORE eq1
+    CALL compare    ; Compares desired and current angles
+    LOAD eqOut
+    STORE TurnTemp
+    IN THETA
+    SUB angle
+	CALL abs
+    STORE eq1
+    LOAD Deg180
+    STORE eq2
+    CALL compare    ; Compares difference and 180 deg.
+    LOAD eqOut
+    SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
+	OUT LCD
+    JZERO turnright
+	JUMP turnleft
+turnright:
+    IN theta
+	OUT SSEG2
+    SUB angle
+    CALL abs
+    SUB Deadzone    ; If difference less than deadzone, don't turn
+    JNEG TurnRet
+    LOAD Fslow
+    OUT LVelcmd
+    LOAD RSlow
+    OUT RVelcmd
+    JUMP turnright
+turnleft:
+    IN theta
+	OUT SSEG2
+    SUB angle
+    CALL abs
+    SUB Deadzone    ; If difference less than deadzone, don't turn
+    JNEG TurnRet
+    LOAD Rslow
+    OUT LVelcmd
+    LOAD FSlow
+    OUT RVelcmd
+    JUMP turnleft
+TurnRet:
+    RETURN
+
+TurnTemp:   DW 0
+
+;***************************************************************
+; Scales the points from Feet to MM
+; Usage: Store points in tables
+;        Call scale
+;        Points are scaled in-place
+;***************************************************************
+Scale:  
+    Load scaleCount ; Number of points scaled
+    ADDI -23
+    JZERO ScaleRet  ; Return after looping through all points
+    LOAD FTtoMM     ; Prime multiplier with factor
+    STORE m16sA     ; /
+    ILOAD scaleI    ; Get next point
+    STORE m16sB     ; Multiply by factor
+    CALL Mult16s    ; |
+    LOAD mres16sL   ; /
+    ;STORE d16sN
+    ;CALL Div16s
+    ;LOAD dres16sQ
+    ISTORE scaleI   ; Store scaled point
+    LOAD scaleI     ; Increment pointer
+    ADDI 1          ; |
+    STORE scaleI    ; /
+    LOAD scaleCount ; Increment count
+    ADDI 1          ; |
+    STORE scaleCount; /
+    Jump Scale      ; Loop
+ScaleRet:
+    RETURN
+
+scaleI:     DW X01
+scaleCount: DW &H0000
+FTtoMM:     DW 305
+; Set values for converting to mm
+;LOAD Zero
+;ADDi 10
+;STORE d16sD
 
 ; Subroutine to wait (block) for 1 second
 Wait1:
@@ -934,31 +1002,34 @@ dres16sQ: DW 0 ; quotient result
 dres16sR: DW 0 ; remainder result
 
 ;*******************************************************************************
-; isEqual:
-; checks value in eq1 and eq2 are equal
-; if eq1 is greater then eq2 output 1
+; compare:
+; Compares values in eq1 and eq2
+; if eq1 is greater than eq2 output 1
 ; if values are equal output 0
-; if eq1 is lower then eq2 output -1
-; output is stored in eqOut
+; if eq1 is lower than eq2 output -1
+; Usage:
+;   Store values to compare in eq1 and eq2
+;   Call compare
+;   Output is stored in eqOut
 ;*******************************************************************************
 
-isEqual: 
+compare: 
     LOAD eq1
     sub  eq2
-    jzero Equal
-    jpos  POS
-    jneg  NEG
+    jzero compEqual
+    jpos  compPos
+    jneg  compNeg
 
-Equal:
+compEqual:
     LOAD ZERO
     STORE eqOut
     RETURN
     
-Neg:
+compNeg:
     LOADI -1
     STORE eqOut
     RETURN
-Pos:
+compPos:
     LOADI 1
     STORE eqOut
     RETURN
