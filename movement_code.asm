@@ -92,238 +92,7 @@ lptr: DW Points
 ; (Python converts to ticks also)
 ;CALL Scale             ; Scales points from Ft to MM
 
-<<<<<<< HEAD
-Points: DW X01
 
-Pnt01: DW X01
-Pnt02: DW X02
-Pnt03: DW X03
-Pnt04: DW X04
-Pnt05: DW X05
-Pnt06: DW X06
-Pnt07: DW X07
-Pnt08: DW X08
-Pnt09: DW X09
-Pnt10: DW X10
-Pnt11: DW X11
-Pnt12: DW X12
-
-i: DW &H000C
-j: DW &H0000
-
-scaleI: DW X01
-scaleCount: DW &H0000
-
-Columns: ;ordered form left to right
-col1LowX: DW -1524   ; -5ft
-col1LowY: DW -1829	 ; -6ft
-col1HighX: DW -762	 ; -2.5ft
-col1HighY: DW 1829	 ; 6ft
-
-col2LowX: DW  -762   ; -2.5 ft
-col2LowY: DW  -1829  ; -6ft 
-col2HighX: DW 0		 ; 0ft
-col2HighY: DW 1829   ; 6ft
-
-col3LowX: DW 0		 ; 0ft
-col3LowY: DW -1829   ; -6ft
-col3HighX: DW 762    ; 2.5ft
-col3HighY: DW 1829   ; 6ft
-
-col4LowX: DW 762     ; 2.5ft
-col4LowY: DW -1829   ; -6ft
-col4HighX: DW 1524   ; 5ft
-col4HighY: DW 1829   ; 6ft
-
-col1Start: DW Buffer00
-col1End:   DW &H0000
-
-col2Start: DW &H0000
-col2End:   DW &H0000
-
-col3Start: DW &H0000
-col3End:   DW &H0000
-
-col4Start: DW &H0000
-col4End:   DW Buffer12
-
-FTtoMM:  DW 305
-
-; Set values for converting to mm
-LOAD FTtoMM
-STORE ms16sA
-;LOAD Zero
-;ADDi 10
-;STORE d16sD
-
-; Scales the points from FT to MM --------------------------------------------------
-Scale: Load scaleCount
-addi -23
-jzero Sort
-ILOAD scaleI
-STORE ms16sB
-CALL Mult16s
-LOAD mres16sL
-;STORE d16sN
-;CALL Div16s
-;LOAD dres16sQ
-ISTORE scaleI
-LOAD scaleI
-ADDi 1
-STORE scaleI
-LOAD scaleCount
-ADDi 1
-STORE scaleCount
-Jump Scale
-; Finished Scaling Points ------------------------------------------------------------
-
-Col1Counter: DW &H0000
-Col1StartX:   DW X01
-Col1X:        DW X01
-Col1StartY:   DW Y01
-Col1Y:        DW Y01
-Col1L:        DW Pnt01
-PointBufferX: DW &H0000
-PointBufferY: DW &H0000
-PointBuggerL: DW &H0000
-X: DW &H0000
-Y: DW &H0000
-Sort:    
-    LOAD POINTS
-    STORE scaleI
-    LOAD ZERO
-    STORE scaleCount
-    
-Col1:
-    LOAD col1HighX
-    STORE eq1
-    ILOAD scaleI
-    STORE eq2
-    CALL isEqual
-    LOAD eqOUT
-    JNEG inCol1
-    JZERO inCol1
-    JPOS  Col1
-    
-    
-inCol1:
-    LOAD Col1Counter ;load counter for number of points in col1
-    ADDI 1           ; add 1
-    STORE Col1Counter; store counter
-    
-    ILOAD scaleI     ; load the x value of the point 
-    STORE PointBufferX ; store the x value into the x buffer
-    
-    ILOAD Col1X   ; load the x value for the next col1 storing location
-    ISTORE scaleI ; store the col1x value into the x point array
-    
-    LOAD scaleI   ; load the address of the point that is being added to col1
-    ADDI 12       ; add 12 to get the address of the y value
-    STORE X       ; store into temp variable x
-    
-    LOAD PointBufferY
-    ISTORE Col1Y
-    
-    ILOAD X       ; load the y value of the point being added to col1
-    STORE PointBufferY ; store the y value of the point into the buffer
-    
-    ILOAD Col1Y        ; load the y value of Y01
-    ISTORE X           ; store into the y value being moved from Y01
-    
-    LOAD X       ; load the current address of the point that is being added to col1
-    ADDI 12      ; add 12 to get the address for the location array
-    STORE X      ; store the address of the point in the location array
-    
-    ILOAD X      ; load the address from the location array
-    STORE PointBufferL ; store into the point location buffer
-    
-    ILOAD Col1L  ; load the location of point 1 
-    ISTORE X     ; store the location of point 1 into its new home
-    
-
-    
-    LOAD PointBufferY
-    
-    
-;    ILOAD scaleI
-;    ISTORE Col1X
-
-    LOAD Col1X
-    ADDI 1
-    STORE Col1X
-    
-    LOAD Col1Y
-    ADDI 1
-    STORE Col1Y
-    
-    LOAD Col1L
-    ADDI 1
-    STORE Col1L
-    
-    
-inCol1:
-    LOAD Col1Counter ;load counter for number of points in col1
-    ADDI 1           ; add 1
-    STORE Col1Counter; store counter
-    
-    ILOAD scaleI     ; load the x value of the point 
-    STORE PointBufferX ; store the x value into the x buffer
-    
-    ILOAD Col1X   ; load the x value for the next col1 storing location
-    ISTORE scaleI ; store the col1x value into the x point array
-    
-    LOAD scaleI   ; load the address of the point that is being added to col1
-    ADDI 12       ; add 12 to get the address of the y value
-    STORE X       ; store into temp variable x
-    
-    LOAD PointBufferY
-    ISTORE Col1Y
-    
-    ILOAD X       ; load the y value of the point being added to col1
-    STORE PointBufferY ; store the y value of the point into the buffer
-    
-    ILOAD Col1Y        ; load the y value of Y01
-    ISTORE X           ; store into the y value being moved from Y01
-    
-    LOAD X       ; load the current address of the point that is being added to col1
-    ADDI 12      ; add 12 to get the address for the location array
-    STORE X      ; store the address of the point in the location array
-    
-    ILOAD X      ; load the address from the location array
-    STORE PointBufferL ; store into the point location buffer
-    
-    ILOAD Col1L  ; load the location of point 1 
-    ISTORE X     ; store the location of point 1 into its new home
-    
-
-    
-    LOAD PointBufferY
-    
-    
-;    ILOAD scaleI
-;    ISTORE Col1X
-
-    LOAD Col1X
-    ADDI 1
-    STORE Col1X
-    
-    LOAD Col1Y
-    ADDI 1
-    STORE Col1Y
-    
-    LOAD Col1L
-    ADDI 1
-    STORE Col1L
-    
-    
-    
-    
-    
-    
-    
-    
-=======
->>>>>>> origin/master
 ; Go to position
 ; Moves the robot to an X,Y position
 GoTo:
@@ -343,7 +112,8 @@ GoTo:
 	LOAD ZERO
 	OUT RVelcmd
 	OUT LVelcmd
-	CALL WAIT1
+    LOADI 5
+	CALL WaitAC        ; Wait half a second
 	;JUMP Die
     
 move:                  ; Start moving
@@ -386,6 +156,8 @@ atPoint:               ; Made it to the point. Announce and get next point
     STORE i
     ADDI -2
     JZERO Die
+    LOADI 5
+    CALL WaitAC        ; Wait half a second
     JUMP GoTo
     
 Deadzone: DW 5  
