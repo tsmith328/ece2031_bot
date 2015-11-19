@@ -96,18 +96,18 @@ lptr: DW Points
 ; Go to position
 ; Moves the robot to an X,Y position
 GoTo:
-    IN Xpos
-    STORE X            ; Load X position
-    IN Ypos
-    STORE Y            ; Load Y position
-    CALL calc_dxdy     ; Calculate dX and dY
-    LOAD dX
-    STORE AtanX        ; Save dX for atan subroutine
-    LOAD dY
-    STORE AtanY        ; Save dY for atan
-    CALL atan2
-    STORE angle        ; Save angle to next point
-	OUT SSEG1
+    ;IN Xpos
+    ;STORE X            ; Load X position
+    ;IN Ypos
+    ;STORE Y            ; Load Y position
+    ;CALL calc_dxdy     ; Calculate dX and dY
+    ;LOAD dX
+    ;STORE AtanX        ; Save dX for atan subroutine
+    ;LOAD dY
+    ;STORE AtanY        ; Save dY for atan
+    ;CALL atan2
+    ;STORE angle        ; Save angle to next point
+	;OUT SSEG1
     CALL curve
     ; DO STUFF WHEN AT POINT
     ;CALL TurnTo
@@ -117,7 +117,8 @@ GoTo:
     ;LOADI 5
 	;CALL WaitAC        ; Wait half a second
 	JUMP Die
-    
+
+; Don't really need this anymore (save until test curving code)
 move:                  ; Start moving
     IN Xpos
     STORE X            ; Get x position
@@ -267,6 +268,7 @@ case4: ; angle > theta and | angle - theta| < 180
     JUMP curveright
 
 curveleft:          ; Change values of wheels to turn left
+    ; Check if angle > 90. If so, turn left wheel backwards
     LOAD turn_ang
     STORE m16sA
     LOADI 160
@@ -286,6 +288,7 @@ curveleft:          ; Change values of wheels to turn left
     JUMP check_dist
 
 curveright:         ; Change values of wheels to turn right
+    ; Check if angle is > 90. If so, turn right wheel backwards
     LOAD turn_ang
     STORE m16sA
     LOADI 160
