@@ -108,13 +108,15 @@ GoTo:
     CALL atan2
     STORE angle        ; Save angle to next point
 	OUT SSEG1
-    CALL TurnTo
-	LOAD ZERO
-	OUT RVelcmd
-	OUT LVelcmd
-    LOADI 5
-	CALL WaitAC        ; Wait half a second
-	;JUMP Die
+    CALL curve
+    ; DO STUFF WHEN AT POINT
+    ;CALL TurnTo
+	;LOAD ZERO
+	;OUT RVelcmd
+	;OUT LVelcmd
+    ;LOADI 5
+	;CALL WaitAC        ; Wait half a second
+	JUMP Die
     
 move:                  ; Start moving
     IN Xpos
@@ -187,6 +189,141 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 ;* Subroutines
 ;***************************************************************
 
+;***************************************************************
+; Curves the robot toward a point while moving forward
+; Usage: Set xptr and yptr to point to be visited
+;        Call curve
+;        Returns when robot reaches the point
+;***************************************************************
+curve:
+    IN Xpos
+    STORE X
+    IN Ypos
+    STORE Y
+    CALL calc_dxdy  ; Get differences in X and Y
+    LOAD dX
+    STORE AtanX
+    LOAD dY
+    STORE AtanY
+    CALL Atan2      ; Get angle to the point
+    STORE angle
+    STORE eq1
+    IN THETA
+    STORE eq2
+    CALL compare    ; Compare angle and curr. heading
+    LOAD eqOut
+    JNEG curvetest2 ; If angle < heading, ang_more = 0
+    LOADI 1
+    STORE ang_more
+curvetest2:         ; Test if difference < 180 deg.
+    IN THETA
+    SUB angle
+    CALL abs
+    STORE eq1
+    LOAD Deg180
+    STORE eq2
+    CALL compare    ; |ang - theta| =? 180
+    LOAD eqOut
+    JNEG done_test  ; difference < 180
+    LOADI 1
+    STORE diff_more
+done_test:
+    LOAD ang_more
+    AND diff_more
+    JPOS case1      ; 4 cases
+    LOAD ang_more
+    JPOS case4
+    LOAD diff_more
+    JPOS case3
+    JUMP case2
+; Different cases for determining wheel speeds for turning
+case1: ; angle > theta and | angle - theta| > 180
+    IN THETA
+    STORE angle1
+    LOAD Deg360
+    SUB angle
+    ADD angle1
+    STORE turn_ang
+    JUMP curveleft
+case2: ; angle < theta and | angle - theta| < 180
+    IN THETA
+    SUB angle
+    STORE turn_ang
+    JUMP curveleft
+case3: ; angle < theta and | angle - theta| > 180
+    IN THETA
+    STORE angle1
+    LOAD Deg360
+    SUB angle1
+    ADD angle
+    STORE turn_ang
+    JUMP curveright
+case4: ; angle > theta and | angle - theta| < 180
+    IN THETA
+    STORE angle1
+    LOAD angle
+    SUB angle1
+    STORE turn_ang
+    JUMP curveright
+
+curveleft:          ; Change values of wheels to turn left
+    LOAD turn_ang
+    STORE m16sA
+    LOADI 160
+    STORE m16sB
+    CALL mult16s    ; Multiply angle by 160
+    LOAD mres16sL
+    STORE d16sN
+    LOADI 180
+    STORE d16sD
+    CALL div16s     ; Divide by 180
+    LOAD dres16sQ
+    STORE spd_diff
+    LOAD FMid
+    OUT LVelcmd
+    ADD spd_diff
+    OUT RVelcmd
+    JUMP check_dist
+
+curveright:         ; Change values of wheels to turn right
+    LOAD turn_ang
+    STORE m16sA
+    LOADI 160
+    STORE m16sB
+    CALL mult16s    ; Multiply angle by 160
+    LOAD mres16sL
+    STORE d16sN
+    LOADI 180
+    STORE d16sD
+    CALL div16s     ; Divide by 180
+    LOAD dres16sQ
+    STORE spd_diff
+    LOAD FMid
+    OUT RVelcmd
+    ADD spd_diff
+    OUT LVelcmd
+    JUMP check_dist
+
+check_dist:         ; Checks distance to point
+    IN Xpos
+    STORE X
+    IN Ypos
+    STORE Y
+    CALL calc_dxdy 
+    LOAD dX
+    STORE L2X
+    LOAD dY
+    STORE L2Y
+    CALL L2Estimate
+    SUB Goalzone
+    JPOS curve
+    RETURN
+
+ang_more:  DW 0     ; Boolean: true if angle > theta
+diff_more: DW 0     ; Boolean: true if |angle-theta| > 180
+angle1:    DW 0
+turn_ang:  DW 0
+spd_diff:  DW 0
 ;***************************************************************
 ; Calculates difference in provided X and Y positions
 ; and X and Y of next point to visit. Requires abs subrouting
