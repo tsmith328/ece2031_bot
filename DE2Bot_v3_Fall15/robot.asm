@@ -79,16 +79,56 @@ Main: ; "Real" program starts here.
 	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
 	CALL   UARTClear   ; empty the UART receive FIFO of any old data
     ; Reset pointer values
-    ;LOAD 0
-    ;STORE count
-    ;LOAD X01
-    ;STORE xptr
-    ;LOAD Y01
-    ;STORE yptr
-    ;LOAD Points
-    ;STORE lptr
+    LOAD 0
+    STORE count
+    LOAD X01
+    STORE xptr
+    LOAD Y01
+    STORE yptr
+    LOAD Points
+    STORE lptr
 
-;Put points here
+TableOfPoints:
+X01: DW 0
+X02: DW 581
+X03: DW 290
+X04: DW 581
+X05: DW -871
+X06: DW -1162
+X07: DW -871
+X08: DW -1162
+X09: DW 871
+X10: DW 871
+X11: DW -581
+X12: DW -581
+
+Y01: DW -1452
+Y02: DW -871
+Y03: DW 1162
+Y04: DW 1452
+Y05: DW 581
+Y06: DW 290
+Y07: DW -290
+Y08: DW -581
+Y09: DW -871
+Y10: DW -581
+Y11: DW 1162
+Y12: DW -1162
+
+Points:
+
+DW 10
+DW 08
+DW 09
+DW 06
+DW 04
+DW 01
+DW 03
+DW 12
+DW 07
+DW 02
+DW 05
+DW 11
 
 count: DW 0
 
@@ -134,7 +174,7 @@ GoTo:
     LOAD count          ; Increment counter
     ADDI 1
     STORE count
-    ADDI -1
+    SUB 12
     JZERO Die           ; If count = 12, then we finished the last point
     JUMP GoTo
 
@@ -236,7 +276,6 @@ curve:
     STORE AtanY
     CALL Atan2      ; Get angle to the point
     STORE angle
-    OUT LCD
     STORE eq1
     IN THETA
     STORE eq2
@@ -297,9 +336,10 @@ case4: ; angle > theta and | angle - theta| < 180
     JUMP curveright
 
 curveleft:          ; Change values of wheels to turn left
+    ; Check if angle > 90. If so, turn left wheel backwards
     LOAD turn_ang
     STORE m16sA
-    LOADI 700
+    LOADI 160
     STORE m16sB
     CALL mult16s    ; Multiply angle by 160
     LOAD mres16sL
@@ -307,32 +347,27 @@ curveleft:          ; Change values of wheels to turn left
     LOADI 180
     STORE d16sD
     CALL div16s     ; Divide by 180
-    LOAD mres16sH
-    JZERO small_left ;Check if overflow. If so, multiply by two
-    LOADI 2
-    STORE m16sA
-    LOAD dres16sQ
-    STORE m16sB
-    CALL mult16s
-    LOAD mres16sL
-    STORE spd_diff
-    OUT SSEG1
-    JUMP left_move
-small_left:
     LOAD dres16sQ
     STORE spd_diff
-    OUT SSEG1
-left_move:
-    LOAD Fmid
-    OUT RVelcmd
+    LOAD turn_ang   ; If angle > 90, need to slow/reverse left wheel
+    SUB 90
+    JNEG left_shallow
+    LOAD FMid
+    SUB spd_diff
     SUB spd_diff
     OUT LVelcmd
+left_shallow:
+    LOAD FMid
+    OUT LVelcmd
+    ADD spd_diff
+    OUT RVelcmd
     JUMP check_dist
 
 curveright:         ; Change values of wheels to turn right
+    ; Check if angle is > 90. If so, turn right wheel backwards
     LOAD turn_ang
     STORE m16sA
-    LOADI 700
+    LOADI 160
     STORE m16sB
     CALL mult16s    ; Multiply angle by 160
     LOAD mres16sL
@@ -340,26 +375,20 @@ curveright:         ; Change values of wheels to turn right
     LOADI 180
     STORE d16sD
     CALL div16s     ; Divide by 180
-    LOAD mres16sH
-    JZERO small_right ;Check if overflow. If so, multiply by two
-    LOADI 2
-    STORE m16sA
     LOAD dres16sQ
-    STORE m16sB
-    CALL mult16s
-    LOAD mres16sL
     STORE spd_diff
-    OUT SSEG1
-    JUMP right_move
-small_right:
-    LOAD dres16sQ
-    OUT SSEG1
-    STORE spd_diff
-right_move:
-    LOAD Fmid
-    OUT Lvelcmd
+    LOAD turn_ang   ; If angle > 90, need to slow/reverse left wheel
+    SUB 90
+    JNEG right_shallow
+    LOAD FMid
     SUB spd_diff
-    OUT Rvelcmd
+    SUB spd_diff
+    OUT RVelcmd
+right_shallow:
+    LOAD FMid
+    OUT RVelcmd
+    ADD spd_diff
+    OUT LVelcmd
     JUMP check_dist
 
 check_dist:         ; Checks distance to point
@@ -374,8 +403,8 @@ check_dist:         ; Checks distance to point
     STORE L2Y
     CALL L2Estimate
     SUB Goalzone
-    OUT SSEG2
     JPOS curve
+    OUT BEEP
     RETURN
 
 ang_more:  DW 0     ; Boolean: true if angle > theta
@@ -383,7 +412,6 @@ diff_more: DW 0     ; Boolean: true if |angle-theta| > 180
 angle1:    DW 0
 turn_ang:  DW 0
 spd_diff:  DW 0
-
 ;***************************************************************
 ; Calculates difference in provided X and Y positions
 ; and X and Y of next point to visit. Requires abs subrouting
