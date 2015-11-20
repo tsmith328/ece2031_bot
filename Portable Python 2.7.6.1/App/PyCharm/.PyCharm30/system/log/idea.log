@@ -1,0 +1,55 @@
+2015-11-20 11:09:12,847 [      0]   INFO -        #com.intellij.idea.Main - ------------------------------------------------------ IDE STARTED ------------------------------------------------------ 
+2015-11-20 11:09:12,888 [     41]   INFO -        #com.intellij.idea.Main - IDE: PyCharm Community Edition (build #PC-133.1229, 03 Apr 2014 00:00) 
+2015-11-20 11:09:12,888 [     41]   INFO -        #com.intellij.idea.Main - OS: Windows 8 (6.2, x86) 
+2015-11-20 11:09:12,888 [     41]   INFO -        #com.intellij.idea.Main - JRE: 1.7.0_40-b43 (Oracle Corporation) 
+2015-11-20 11:09:12,888 [     41]   INFO -        #com.intellij.idea.Main - JVM: 24.0-b56 (Java HotSpot(TM) Server VM) 
+2015-11-20 11:09:12,890 [     43]   INFO -        #com.intellij.idea.Main - JVM Args: -Xms128m -Xmx512m -XX:MaxPermSize=250m -XX:ReservedCodeCacheSize=64m -ea -Dsun.io.useCanonCaches=false -Djava.net.preferIPv4Stack=true -XX:+UseCodeCacheFlushing -XX:+UseConcMarkSweepGC -XX:SoftRefLRUPolicyMSPerMB=50 -Xbootclasspath/a:D:\Documents\GitHub\ece2031_bot\Portable Python 2.7.6.1\App\PyCharm\lib\boot.jar -Didea.platform.prefix=PyCharmCore -Didea.no.jre.check=true -Didea.paths.selector=PyCharm30 
+2015-11-20 11:09:12,949 [    102]   INFO -        #com.intellij.idea.Main - JNA library loaded (32-bit) in 59 ms 
+2015-11-20 11:09:12,979 [    132]   INFO -        #com.intellij.idea.Main - Snappy library loaded (1.0.5) in 29 ms 
+2015-11-20 11:09:12,981 [    134]   INFO - penapi.util.io.win32.IdeaWin32 - Native filesystem for Windows is operational 
+2015-11-20 11:09:12,982 [    135]   INFO -        #com.intellij.idea.Main - Using "FocusKiller" library to prevent focus stealing. 
+2015-11-20 11:09:14,962 [   2115]   INFO - llij.ide.plugins.PluginManager - 10 plugins initialized in 592 ms 
+2015-11-20 11:09:14,962 [   2115]   INFO - llij.ide.plugins.PluginManager - Loaded bundled plugins: CVS Integration (11), Git Integration (8.1), GitHub, IDEA CORE, Python ReStructureText Integration (VERSION), ReStructuredText Support (134.SNAPSHOT), Subversion Integration (1.1), Task Management (1.0), Terminal (0.1), hg4idea (10.0) 
+2015-11-20 11:09:15,299 [   2452]   INFO - ellij.vfs.persistent.FSRecords - Marking VFS as corrupted 
+2015-11-20 11:09:15,300 [   2453]   INFO - ellij.util.io.PagedFileStorage - lower=100; upper=200; buffer=10; max=498008064 
+2015-11-20 11:09:15,347 [   2500]   INFO - api.vfs.impl.local.FileWatcher - Starting file watcher: D:\Documents\GitHub\ece2031_bot\Portable Python 2.7.6.1\App\PyCharm\bin\fsnotifier.exe 
+2015-11-20 11:09:15,360 [   2513]   INFO - api.vfs.impl.local.FileWatcher - Native file watcher is operational. 
+2015-11-20 11:09:15,407 [   2560]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/path.macros.xml file is null 
+2015-11-20 11:09:15,415 [   2568]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/project.default.xml file is null 
+2015-11-20 11:09:15,485 [   2638]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/filetypes.xml file is null 
+2015-11-20 11:09:15,540 [   2693]   INFO - .history.utils.LocalHistoryLog - local history version mismatch (was: 0, expected: 5), rebuilding... 
+2015-11-20 11:09:15,540 [   2693]   INFO - .history.utils.LocalHistoryLog - FS has been rebuild, rebuilding local history... 
+2015-11-20 11:09:15,560 [   2713]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/ui.lnf.xml file is null 
+2015-11-20 11:09:15,563 [   2716]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/options.xml file is null 
+2015-11-20 11:09:15,594 [   2747]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/notifications.xml file is null 
+2015-11-20 11:09:15,596 [   2749]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/usage.statistics.xml file is null 
+2015-11-20 11:09:15,596 [   2749]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/statistics.application.usages.xml file is null 
+2015-11-20 11:09:15,670 [   2823]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/keymap.xml file is null 
+2015-11-20 11:09:15,761 [   2914]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/window.manager.xml file is null 
+2015-11-20 11:09:15,767 [   2920]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/abbreviations.xml file is null 
+2015-11-20 11:09:15,776 [   2929]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/ide.general.xml file is null 
+2015-11-20 11:09:15,785 [   2938]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/editor.xml file is null 
+2015-11-20 11:09:15,786 [   2939]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/macros.xml file is null 
+2015-11-20 11:09:15,788 [   2941]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/quicklists.xml file is null 
+2015-11-20 11:09:17,451 [   4604]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/stubIndex.xml file is null 
+2015-11-20 11:09:17,473 [   4626]   INFO - tellij.xml.Html5SchemaProvider - HTML5_SCHEMA_LOCATION = D:/Documents/GitHub/ece2031_bot/Portable Python 2.7.6.1/App/PyCharm/lib/pycharm.jar!/resources/html5-schema/html5.rnc 
+2015-11-20 11:09:17,473 [   4626]   INFO - tellij.xml.Html5SchemaProvider - XHTML5_SCHEMA_LOCATION = D:/Documents/GitHub/ece2031_bot/Portable Python 2.7.6.1/App/PyCharm/lib/pycharm.jar!/resources/html5-schema/xhtml5.rnc 
+2015-11-20 11:09:17,473 [   4626]   INFO - tellij.xml.Html5SchemaProvider - CHARS_DTD_LOCATION = D:/Documents/GitHub/ece2031_bot/Portable Python 2.7.6.1/App/PyCharm/lib/pycharm.jar!/resources/html5-schema/html5chars.ent 
+2015-11-20 11:09:17,631 [   4784]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/colors.scheme.xml file is null 
+2015-11-20 11:09:17,634 [   4787]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/editor.codeinsight.xml file is null 
+2015-11-20 11:09:17,650 [   4803]   INFO - ellij.project.impl.ProjectImpl - 18 project components initialized in 168 ms 
+2015-11-20 11:09:17,650 [   4803]   INFO - le.impl.ModuleManagerComponent - 0 module(s) loaded in 0 ms 
+2015-11-20 11:09:17,662 [   4815]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/code.style.schemes.xml file is null 
+2015-11-20 11:09:17,677 [   4830]   INFO - s.impl.stores.FileBasedStorage - Document was not loaded for $APP_CONFIG$/terminal.xml file is null 
+2015-11-20 11:09:17,678 [   4831]   INFO - pl.stores.ApplicationStoreImpl - 74 application components initialized in 2691 ms 
+2015-11-20 11:09:17,696 [   4849]   INFO - .intellij.idea.IdeaApplication - App initialization took 5233 ms 
+2015-11-20 11:09:21,330 [   8483]   INFO - il.indexing.FileBasedIndexImpl - START INDEX SHUTDOWN 
+2015-11-20 11:09:21,401 [   8554]   INFO - il.indexing.FileBasedIndexImpl - END INDEX SHUTDOWN 
+2015-11-20 11:09:21,401 [   8554]   INFO - stubs.SerializationManagerImpl - START StubSerializationManager SHUTDOWN 
+2015-11-20 11:09:21,409 [   8562]   INFO - stubs.SerializationManagerImpl - END StubSerializationManager SHUTDOWN 
+2015-11-20 11:09:21,409 [   8562]   INFO - .history.utils.LocalHistoryLog - Purging local history... 
+2015-11-20 11:09:21,413 [   8566]   INFO - .history.utils.LocalHistoryLog - Local history storage successfully closed. 
+2015-11-20 11:09:21,498 [   8651]   WARN - api.vfs.impl.local.FileWatcher - Watcher terminated with exit code 0 
+2015-11-20 11:09:21,498 [   8651]   INFO - newvfs.persistent.PersistentFS - VFS dispose started 
+2015-11-20 11:09:21,525 [   8678]   INFO - newvfs.persistent.PersistentFS - VFS dispose completed 
+2015-11-20 11:09:21,527 [   8680]   INFO -        #com.intellij.idea.Main - ------------------------------------------------------ IDE SHUTDOWN ------------------------------------------------------ 
