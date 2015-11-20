@@ -78,11 +78,19 @@ Main: ; "Real" program starts here.
 	; You will probably want to reset the position at the start your project code:
 	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
 	CALL   UARTClear   ; empty the UART receive FIFO of any old data
+    ; Reset pointer values
+    LOAD 0
+    STORE count
+    LOAD X01
+    STORE xptr
+    LOAD Y01
+    STORE yptr
+    LOAD Points
+    STORE lptr
 
 ;Put points here
 
-i: DW 0
-j: DW Y01
+count: DW 0
 
 xptr: DW X01
 yptr: DW Y01
@@ -108,8 +116,28 @@ GoTo:
     ;CALL atan2
     ;STORE angle        ; Save angle to next point
 	;OUT SSEG1
+
     CALL curve
-    ; DO STUFF WHEN AT POINT
+    ; Should be at point now. Indicate and get next point.
+    ; If no more points, die.
+    ILOAD lptr
+    CALL IndicateDest   ; Tell computer where we are
+    LOAD xptr           ; Increment pointers
+    ADDI 1              ; |
+    STORE xptr          ; |
+    LOAD yptr           ; |
+    ADDI 1              ; |
+    STORE yptr          ; |
+    LOAD lptr           ; |
+    ADDI 1              ; |
+    STORE lptr          ; /
+    LOAD count          ; Increment counter
+    ADDI 1
+    STORE count
+    SUB 12
+    JZERO Die           ; If count = 12, then we finished the last point
+    JUMP GoTo
+
     ;CALL TurnTo
 	;LOAD ZERO
 	;OUT RVelcmd
@@ -154,9 +182,9 @@ atPoint:               ; Made it to the point. Announce and get next point
     LOAD lptr
     ADDI 1
     STORE lptr
-    LOAD i             ; After all points, stop
+    LOAD count             ; After all points, stop
     ADDI 1
-    STORE i
+    STORE count
     ADDI -2
     JZERO Die
     LOADI 5
@@ -281,6 +309,14 @@ curveleft:          ; Change values of wheels to turn left
     CALL div16s     ; Divide by 180
     LOAD dres16sQ
     STORE spd_diff
+    LOAD turn_ang   ; If angle > 90, need to slow/reverse left wheel
+    SUB 90
+    JNEG left_shallow
+    LOAD FMid
+    SUB spd_diff
+    SUB spd_diff
+    OUT LVelcmd
+left_shallow:
     LOAD FMid
     OUT LVelcmd
     ADD spd_diff
@@ -301,6 +337,14 @@ curveright:         ; Change values of wheels to turn right
     CALL div16s     ; Divide by 180
     LOAD dres16sQ
     STORE spd_diff
+    LOAD turn_ang   ; If angle > 90, need to slow/reverse left wheel
+    SUB 90
+    JNEG right_shallow
+    LOAD FMid
+    SUB spd_diff
+    SUB spd_diff
+    OUT RVelcmd
+right_shallow:
     LOAD FMid
     OUT RVelcmd
     ADD spd_diff
@@ -320,6 +364,7 @@ check_dist:         ; Checks distance to point
     CALL L2Estimate
     SUB Goalzone
     JPOS curve
+    OUT BEEP
     RETURN
 
 ang_more:  DW 0     ; Boolean: true if angle > theta
