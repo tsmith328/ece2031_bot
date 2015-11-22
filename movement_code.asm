@@ -23,7 +23,7 @@
 ; code.
 ORG        &H000       ; Jump table is located in mem 0-4
 	JUMP   Init        ; Reset vector
-	RETI               ; Sonar interrupt (unused)
+	JUMP   Sonar_ISR  ; Sonar interrupt (unused)
 	JUMP   CTimer_ISR  ; Timer interrupt
 	RETI               ; UART interrupt (unused)
 	RETI               ; Motor stall interrupt (unused)
@@ -37,7 +37,13 @@ Init:
 	LOAD   Zero
 	OUT    LVELCMD     ; Stop motors
 	OUT    RVELCMD
-	OUT    SONAREN     ; Disable sonar (optional)
+	ADDI   &HFF
+	OUT    SONAREN     ; Enable sonar 
+	OUT    SONARINT    ; Enable sonar interrupts
+	LOAD   ZERO
+	ADDI   153         ; 6 inches in mm
+	OUT    SONALARM:   ; Set sonar alarm distance to 6 inches 
+	LOAD   ZERO
 	OUT    BEEP        ; Stop any beeping
 	
 	CALL   SetupI2C    ; Configure the I2C to read the battery voltage
@@ -506,7 +512,16 @@ Wloop:
 	ADDI   -10         ; 1 second in 10Hz.
 	JNEG   Wloop
 	RETURN
-
+	
+; Subroutine to wait (block) for 2 second
+Wait2:
+	OUT    TIMER
+Wloo2:
+	IN     TIMER
+	ADDI   -15         ; 1.5 second in 10Hz.
+	JNEG   Wloop
+	RETURN
+	
 ; Subroutine to wait the number of timer counts currently in AC
 WaitAC:
 	STORE  WaitTime
@@ -674,13 +689,241 @@ CTimer_ISR:
 	CALL   UARTSend2
 	LOAD   IDFlag ; check if user has request a destination indication
 	JPOS   CTIndicateDest ; if yes, do it; otherwise...
-	RETI   ; return from interrupt
+	RETI   ; return from interrupt	
 CTIndicateDest:
 	LOAD   IDNumber
 	CALL   UARTSend1 ; send the indicated destination
 	LOADI  0
 	STORE  IDFlag
 	RETI
+
+	
+Sonar_ISR: ; Sonar interrupt
+    STORE	saveAC
+;	LOAD	SonarActive ;loads interrupt latch
+;	ADDI	-1
+;	JZERO	RECOVER ; checks to see if we are in the middle of an interrupt already
+;	RETI ; exit ISR
+	
+RECOVER:
+	IN      SONALARM
+	STORE   actSonAlarm ; save the active alarms
+	LOAD    ZERO
+	OUT     SONAREN   ; disable sonar to prevent other alarms
+	
+;	STORE	SonarActive ; set SonarActive to 0 so it does not interrupt the interrupt
+	LOAD	actSonAlarm ; get the alarm register
+	JZERO   ENDSINTERUPT ; if Sonar is not active
+	
+	
+ZERODEG:
+	AND 	Mask23 ; checks to see if the object is in FRONT of the DE2BOT
+	JZERO 	NEG44DEG ; nothing set, no turn
+	XOR 	Mask23 ; check for BOTH bits set
+	JZERO 	NEG44DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    180
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 180 if so mod it 
+	LOAD    eqOut
+	JNEG    add180	; if angle > 180 mod it; if not add 180
+	LOAD    eq1
+	CALL    Mod180
+	STORE   ANGLE
+	JUMP    sTurn
+	
+add180: 
+	LOAD    eq1
+	ADDI    180
+	STORE   ANGLE
+	JUMP	sTurn
+	
+
+NEG44DEG:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask4 ; checks to see if the object is in FRONT RIGHT of DE2BOT
+	JZERO 	POS44DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    224
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 244 
+	LOAD    eqOut
+	JNEG    add136	; if angle >= 224 sub 224; if not add 136 
+	LOAD    eq1
+	ADDI    -224
+	STORE   ANGLE
+	JUMP    sTurn
+
+add136: 
+	LOAD    eq1
+	ADDI    136
+	STORE   ANGLE
+	Jump    sTurn
+
+	
+POS44DEG:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask1 ; checks to see if the object is in FRONT LEFT of DE2BOT
+	JZERO 	NEG90DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    136
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 136 
+	LOAD    eqOut
+	JNEG    add224	; if angle >= 136 add 224; if not sub 136 
+	LOAD    eq1
+	ADDI    -136
+	STORE   ANGLE
+	JUMP    sTurn
+
+add224: 
+	LOAD    eq1
+	ADDI    224
+	STORE   ANGLE
+	Jump    sTurn
+
+	
+	
+NEG90DEG:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask5 ; checks to see if the object is RIGHT of DE2BOT
+	JZERO 	POS90DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    270
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 270 
+	LOAD    eqOut
+	JNEG    add90	; if angle >= 270 sub 270; if not add 90 
+	LOAD    eq1
+	ADDI    -270
+	STORE   ANGLE
+	JUMP    sTurn
+
+add90: 
+	LOAD    eq1
+	ADDI    90
+	STORE   ANGLE
+	Jump    sTurn	
+
+
+	
+POS90DEG:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask0 ; checks to see if the object is LEFT of DE2BOT
+	JZERO 	NEG144DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    90
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 90
+	LOAD    eqOut
+	JNEG    add270	; if angle >= 90 sub 90; if not add 270 
+	LOAD    eq1
+	ADDI    -90
+	STORE   ANGLE
+	JUMP    sTurn
+
+add270: 
+	LOAD    eq1
+	ADDI    270
+	STORE   ANGLE
+	Jump    sTurn	
+
+
+
+
+NEG144DEGREES:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
+	JZERO 	POS144DEG ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    324
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 324
+	LOAD    eqOut
+	JNEG    add36	; if angle > 324 sub 324; if not add 36 
+	LOAD    eq1
+	ADDI    -324
+	STORE   ANGLE
+	JUMP    sTurn
+
+add36: 
+	LOAD    eq1
+	ADDI    36
+	STORE   ANGLE
+	Jump    sTurn	
+
+POS144DEG:
+	LOAD	actSonAlarm ; get the alarm register
+	AND 	Mask7 ; checks to see if the object is BACK LEFT of DE2BOT
+	JZERO 	ENDSINTERUPT ; nothing set, no turn
+	
+	IN      THETA	;get the current angle we are facing
+	STORE   eq1		
+	LOAD    ZERO
+	ADDI    36
+	STORE   eq2
+	CALL    compare ;check if the angle is greater then 36
+	LOAD    eqOut
+	JNEG    sub36	; if angle >= 36 sub 36; if not add 324 
+	LOAD    eq1
+	ADDI    324
+	STORE   ANGLE
+	JUMP    sTurn
+
+sub36: 
+	LOAD    eq1
+	ADDI    -36
+	STORE   ANGLE
+	Jump    sTurn		
+	
+	
+
+
+sTurn: 				; Turns the robot to the new angle then jumps to move code
+	CALL	TurnTo
+	JUMP    sMove
+sMove:
+	LOAD	Fmid
+    OUT		RVelcmd
+	ADDI 	-15		   ; For robot #69.
+    OUT 	LVelcmd
+	CALL	Wait2
+	JUMP	ENDSINTERUPT
+ 
+ENDSINTERUPT:
+;	LOAD	ONE
+;	STORE	SonarActive ; unlatches interrupt 
+	LOAD    ZERO
+	ADDI    &HFF
+	OUT     SONAREN ;rearm sonar sensors
+	LOAD    saveAC
+	JUMP    GoTo
+
+;SonarActive: DW 1
+ANGLEMAG: DW 0
+saveAC: DW 0
+actSonAlarm: DW 0
+; Configure the interrupt timer and enable interrupts
+
+
 
 ; Configure the interrupt timer and enable interrupts
 StartLog:
