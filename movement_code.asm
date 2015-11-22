@@ -22,68 +22,68 @@
 ; should be a JUMP instruction to the beginning of your normal
 ; code.
 ORG        &H000       ; Jump table is located in mem 0-4
-	JUMP   Init        ; Reset vector
-	JUMP   Sonar_ISR  ; Sonar interrupt (unused)
-	JUMP   CTimer_ISR  ; Timer interrupt
-	RETI               ; UART interrupt (unused)
-	RETI               ; Motor stall interrupt (unused)
-	
+    JUMP   Init        ; Reset vector
+    JUMP   Sonar_ISR   ; Sonar interrupt
+    JUMP   CTimer_ISR  ; Timer interrupt
+    RETI               ; UART interrupt (unused)
+    RETI               ; Motor stall interrupt (unused)
+    
 ;***************************************************************
 ;* Initialization
 ;***************************************************************
 Init:
-	; Always a good idea to make sure the robot
-	; stops in the event of a reset.
-	LOAD   Zero
-	OUT    LVELCMD     ; Stop motors
-	OUT    RVELCMD
-	ADDI   &HFF
-	OUT    SONAREN     ; Enable sonar 
-	OUT    SONARINT    ; Enable sonar interrupts
-	LOAD   ZERO
-	ADDI   153         ; 6 inches in mm
-	OUT    SONALARM   ; Set sonar alarm distance to 6 inches 
-	LOAD   ZERO
-	OUT    BEEP        ; Stop any beeping
-	
-	CALL   SetupI2C    ; Configure the I2C to read the battery voltage
-	CALL   BattCheck   ; Get battery voltage (and end if too low).
-	OUT    LCD         ; Display batt voltage on LCD
+    ; Always a good idea to make sure the robot
+    ; stops in the event of a reset.
+    LOAD   Zero
+    OUT    LVELCMD     ; Stop motors
+    OUT    RVELCMD
+    ADDI   &HFF
+    OUT    SONAREN     ; Enable sonar 
+    OUT    SONARINT    ; Enable sonar interrupts
+    LOAD   ZERO
+    ADDI   153         ; 6 inches in mm
+    OUT    SONALARM    ; Set sonar alarm distance to 6 inches 
+    LOAD   ZERO
+    OUT    BEEP        ; Stop any beeping
+    
+    CALL   SetupI2C    ; Configure the I2C to read the battery voltage
+    CALL   BattCheck   ; Get battery voltage (and end if too low).
+    OUT    LCD         ; Display batt voltage on LCD
 
 WaitForSafety:
-	; Wait for safety switch to be toggled
-	IN     XIO         ; XIO contains SAFETY signal
-	AND    Mask4       ; SAFETY signal is bit 4
-	JPOS   WaitForUser ; If ready, jump to wait for PB3
-	IN     TIMER       ; We'll use the timer value to
-	AND    Mask1       ;  blink LED17 as a reminder to toggle SW17
-	SHIFT  8           ; Shift over to LED17
-	OUT    XLEDS       ; LED17 blinks at 2.5Hz (10Hz/4)
-	JUMP   WaitForSafety
-	
+    ; Wait for safety switch to be toggled
+    IN     XIO         ; XIO contains SAFETY signal
+    AND    Mask4       ; SAFETY signal is bit 4
+    JPOS   WaitForUser ; If ready, jump to wait for PB3
+    IN     TIMER       ; We'll use the timer value to
+    AND    Mask1       ;  blink LED17 as a reminder to toggle SW17
+    SHIFT  8           ; Shift over to LED17
+    OUT    XLEDS       ; LED17 blinks at 2.5Hz (10Hz/4)
+    JUMP   WaitForSafety
+    
 WaitForUser:
-	; Wait for user to press PB3
-	IN     TIMER       ; We'll blink the LEDs above PB3
-	AND    Mask1
-	SHIFT  5           ; Both LEDG6 and LEDG7
-	STORE  Temp        ; (overkill, but looks nice)
-	SHIFT  1
-	OR     Temp
-	OUT    XLEDS
-	IN     XIO         ; XIO contains KEYs
-	AND    Mask2       ; KEY3 mask (KEY0 is reset and can't be read)
-	JPOS   WaitForUser ; not ready (KEYs are active-low, hence JPOS)
-	LOAD   Zero
-	OUT    XLEDS       ; clear LEDs once ready to continue
-	JUMP   Main
-	
+    ; Wait for user to press PB3
+    IN     TIMER       ; We'll blink the LEDs above PB3
+    AND    Mask1
+    SHIFT  5           ; Both LEDG6 and LEDG7
+    STORE  Temp        ; (overkill, but looks nice)
+    SHIFT  1
+    OR     Temp
+    OUT    XLEDS
+    IN     XIO         ; XIO contains KEYs
+    AND    Mask2       ; KEY3 mask (KEY0 is reset and can't be read)
+    JPOS   WaitForUser ; not ready (KEYs are active-low, hence JPOS)
+    LOAD   Zero
+    OUT    XLEDS       ; clear LEDs once ready to continue
+    JUMP   Main
+    
 ;***************************************************************
 ;* Main code
 ;***************************************************************
 Main: ; "Real" program starts here.
-	; You will probably want to reset the position at the start your project code:
-	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
-	CALL   UARTClear   ; empty the UART receive FIFO of any old data
+    ; You will probably want to reset the position at the start your project code:
+    OUT    RESETPOS    ; reset odometer in case wheels moved after programming
+    CALL   UARTClear   ; empty the UART receive FIFO of any old data
     ; Reset pointer values
     ;LOAD 0
     ;STORE count
@@ -121,44 +121,44 @@ GoTo:
     ;STORE AtanY        ; Save dY for atan
     ;CALL atan2
     ;STORE angle        ; Save angle to next point
-	;OUT SSEG1
+    ;OUT SSEG1
 
-    CALL 	curve
+    CALL    curve
     ; Should be at point now. Indicate and get next point.
     ; If no more points, die.
-	LOAD 	ZERO
-	STORE 	timeOut
-    ILOAD 	lptr
-    CALL 	IndicateDest   ; Tell computer where we are
-	
+    LOAD    ZERO
+    STORE   timeOut
+    ILOAD   lptr
+    CALL    IndicateDest   ; Tell computer where we are
+    
 Pointers:
-    LOAD 	xptr           ; Increment pointers
-    ADDI 	1              ; |
-    STORE 	xptr          ; |
-    LOAD 	yptr           ; |
-    ADDI 	1              ; |
-    STORE 	yptr          ; |
-    LOAD 	lptr           ; |
-    ADDI 	1              ; |
-    STORE 	lptr          ; /
-    LOAD 	count          ; Increment counter
-    ADDI 	1
-    STORE 	count
-    ADDI 	-1
-    JZERO 	Die           ; If count = 12, then we finished the last point
-	CAll 	Wait3
-	LOAD 	ZERO
-	OUT  	BEEP
-	OUT  	LEDS
-    JUMP 	GoTo
+    LOAD    xptr           ; Increment pointers
+    ADDI    1              ; |
+    STORE   xptr           ; |
+    LOAD    yptr           ; |
+    ADDI    1              ; |
+    STORE   yptr           ; |
+    LOAD    lptr           ; |
+    ADDI    1              ; |
+    STORE   lptr           ; /
+    LOAD    count          ; Increment counter
+    ADDI    1
+    STORE   count
+    ADDI    -1
+    JZERO   Die           ; If count = 12, then we finished the last point
+    CAll    Wait3
+    LOAD    ZERO
+    OUT     BEEP
+    OUT     LEDS
+    JUMP    GoTo
 
     ;CALL TurnTo
-	;LOAD ZERO
-	;OUT RVelcmd
-	;OUT LVelcmd
+    ;LOAD ZERO
+    ;OUT RVelcmd
+    ;OUT LVelcmd
     ;LOADI 5
-	;CALL WaitAC        ; Wait half a second
-	JUMP 	Die
+    ;CALL WaitAC        ; Wait half a second
+    JUMP    Die
 
 ; Don't really need this anymore (save until test curving code)
 move:                  ; Start moving
@@ -177,7 +177,7 @@ move:                  ; Start moving
     JNEG atPoint       ; Within goal.
     LOAD Fmid
     OUT RVelcmd
-	ADDI -15		   ; For robot #69.
+    ADDI -15           ; For robot #69.
     OUT LVelcmd        ; Move towards point
     JUMP move
 
@@ -203,7 +203,7 @@ atPoint:               ; Made it to the point. Announce and get next point
     JZERO Die
     LOADI 5
     CALL WaitAC        ; Wait half a second
-	
+    
     JUMP GoTo
     
 Deadzone: DW 5  
@@ -218,18 +218,18 @@ Die:
 ; Sometimes it's useful to permanently stop execution.
 ; This will also catch the execution if it accidentally
 ; falls through from above.
-	LOAD   Zero        ; Stop everything.
-	OUT    LVELCMD
-	OUT    RVELCMD
-	OUT    SONAREN
-	LOAD   DEAD        ; An indication that we are dead
-	OUT    SSEG2
-	CALL   StopLog     ; Disable position logging
+    LOAD   Zero        ; Stop everything.
+    OUT    LVELCMD
+    OUT    RVELCMD
+    OUT    SONAREN
+    LOAD   DEAD        ; An indication that we are dead
+    OUT    SSEG2
+    CALL   StopLog     ; Disable position logging
 Forever:
-	JUMP   Forever     ; Do this forever.
+    JUMP   Forever     ; Do this forever.
 DEAD:      DW &HDEAD   ; Example of a "local variable"
 
-	
+    
 ;***************************************************************
 ;* Subroutines
 ;***************************************************************
@@ -428,7 +428,7 @@ dX: DW 0
 TurnTo:
     ; Determine direction to turn
     IN THETA
-	OUT SSEG2
+    OUT SSEG2
     STORE eq2
     LOAD angle
     STORE eq1
@@ -437,19 +437,19 @@ TurnTo:
     STORE TurnTemp
     IN THETA
     SUB angle
-	CALL abs
+    CALL abs
     STORE eq1
     LOAD Deg180
     STORE eq2
     CALL compare    ; Compares difference and 180 deg.
     LOAD eqOut
     SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
-	OUT LCD
+    OUT LCD
     JZERO turnright
-	JUMP turnleft
+    JUMP turnleft
 turnright:
     IN theta
-	OUT SSEG2
+    OUT SSEG2
     SUB angle
     CALL abs
     SUB Deadzone    ; If difference less than deadzone, don't turn
@@ -461,7 +461,7 @@ turnright:
     JUMP turnright
 turnleft:
     IN theta
-	OUT SSEG2
+    OUT SSEG2
     SUB angle
     CALL abs
     SUB Deadzone    ; If difference less than deadzone, don't turn
@@ -516,114 +516,114 @@ FTtoMM:     DW 305
 
 ; Subroutine to wait (block) for 1 second
 Wait1:
-	OUT    TIMER
+    OUT    TIMER
 Wloop:
-	IN     TIMER
-	ADDI   -10         ; 1 second in 10Hz.
-	JNEG   Wloop
-	RETURN
-	
+    IN     TIMER
+    ADDI   -10         ; 1 second in 10Hz.
+    JNEG   Wloop
+    RETURN
+    
 ; Subroutine to wait (block) for 1.5 second
 Wait2:
-	OUT    TIMER
+    OUT    TIMER
 Wloo2:
-	IN     TIMER
-	ADDI   -15         ; 1.5 second in 10Hz.
-	JNEG   Wloop
-	RETURN
+    IN     TIMER
+    ADDI   -15         ; 1.5 second in 10Hz.
+    JNEG   Wloop
+    RETURN
 
 ; Subroutine to wait (block) for .2 second
 Wait3:
-	OUT    TIMER
+    OUT    TIMER
 Wloo3:
-	IN     TIMER
-	ADDI   -2         ; .2 second in 10Hz.
-	JNEG   Wloop
-	RETURN
-	
+    IN     TIMER
+    ADDI   -2         ; .2 second in 10Hz.
+    JNEG   Wloop
+    RETURN
+    
 ; Subroutine to wait the number of timer counts currently in AC
 WaitAC:
-	STORE  WaitTime
-	OUT    Timer
+    STORE  WaitTime
+    OUT    Timer
 WACLoop:
-	IN     Timer
-	SUB    WaitTime
-	JNEG   WACLoop
-	RETURN
-	WaitTime: DW 0     ; "local" variable.
-	
+    IN     Timer
+    SUB    WaitTime
+    JNEG   WACLoop
+    RETURN
+    WaitTime: DW 0     ; "local" variable.
+    
 ; This subroutine will get the battery voltage,
 ; and stop program execution if it is too low.
 ; SetupI2C must be executed prior to this.
 BattCheck:
-	CALL   GetBattLvl
-	JZERO  BattCheck   ; A/D hasn't had time to initialize
-	SUB    MinBatt
-	JNEG   DeadBatt
-	ADD    MinBatt     ; get original value back
-	RETURN
+    CALL   GetBattLvl
+    JZERO  BattCheck   ; A/D hasn't had time to initialize
+    SUB    MinBatt
+    JNEG   DeadBatt
+    ADD    MinBatt     ; get original value back
+    RETURN
 ; If the battery is too low, we want to make
 ; sure that the user realizes it...
 DeadBatt:
-	LOAD   Four
-	OUT    BEEP        ; start beep sound
-	CALL   GetBattLvl  ; get the battery level
-	OUT    SSEG1       ; display it everywhere
-	OUT    SSEG2
-	OUT    LCD
-	LOAD   Zero
-	ADDI   -1          ; 0xFFFF
-	OUT    LEDS        ; all LEDs on
-	OUT    XLEDS
-	CALL   Wait1       ; 1 second
-	Load   Zero
-	OUT    BEEP        ; stop beeping
-	LOAD   Zero
-	OUT    LEDS        ; LEDs off
-	OUT    XLEDS
-	CALL   Wait1       ; 1 second
-	JUMP   DeadBatt    ; repeat forever
-	
+    LOAD   Four
+    OUT    BEEP        ; start beep sound
+    CALL   GetBattLvl  ; get the battery level
+    OUT    SSEG1       ; display it everywhere
+    OUT    SSEG2
+    OUT    LCD
+    LOAD   Zero
+    ADDI   -1          ; 0xFFFF
+    OUT    LEDS        ; all LEDs on
+    OUT    XLEDS
+    CALL   Wait1       ; 1 second
+    Load   Zero
+    OUT    BEEP        ; stop beeping
+    LOAD   Zero
+    OUT    LEDS        ; LEDs off
+    OUT    XLEDS
+    CALL   Wait1       ; 1 second
+    JUMP   DeadBatt    ; repeat forever
+    
 ; Subroutine to read the A/D (battery voltage)
 ; Assumes that SetupI2C has been run
 GetBattLvl:
-	LOAD   I2CRCmd     ; 0x0190 (write 0B, read 1B, addr 0x90)
-	OUT    I2C_CMD     ; to I2C_CMD
-	OUT    I2C_RDY     ; start the communication
-	CALL   BlockI2C    ; wait for it to finish
-	IN     I2C_DATA    ; get the returned data
-	RETURN
+    LOAD   I2CRCmd     ; 0x0190 (write 0B, read 1B, addr 0x90)
+    OUT    I2C_CMD     ; to I2C_CMD
+    OUT    I2C_RDY     ; start the communication
+    CALL   BlockI2C    ; wait for it to finish
+    IN     I2C_DATA    ; get the returned data
+    RETURN
 
 ; Subroutine to configure the I2C for reading batt voltage
 ; Only needs to be done once after each reset.
 SetupI2C:
-	CALL   BlockI2C    ; wait for idle
-	LOAD   I2CWCmd     ; 0x1190 (write 1B, read 1B, addr 0x90)
-	OUT    I2C_CMD     ; to I2C_CMD register
-	LOAD   Zero        ; 0x0000 (A/D port 0, no increment)
-	OUT    I2C_DATA    ; to I2C_DATA register
-	OUT    I2C_RDY     ; start the communication
-	CALL   BlockI2C    ; wait for it to finish
-	RETURN
-	
+    CALL   BlockI2C    ; wait for idle
+    LOAD   I2CWCmd     ; 0x1190 (write 1B, read 1B, addr 0x90)
+    OUT    I2C_CMD     ; to I2C_CMD register
+    LOAD   Zero        ; 0x0000 (A/D port 0, no increment)
+    OUT    I2C_DATA    ; to I2C_DATA register
+    OUT    I2C_RDY     ; start the communication
+    CALL   BlockI2C    ; wait for it to finish
+    RETURN
+    
 ; Subroutine to block until I2C device is idle
 BlockI2C:
-	LOAD   Zero
-	STORE  Temp        ; Used to check for timeout
+    LOAD   Zero
+    STORE  Temp        ; Used to check for timeout
 BI2CL:
-	LOAD   Temp
-	ADDI   1           ; this will result in ~0.1s timeout
-	STORE  Temp
-	JZERO  I2CError    ; Timeout occurred; error
-	IN     I2C_RDY     ; Read busy signal
-	JPOS   BI2CL       ; If not 0, try again
-	RETURN             ; Else return
+    LOAD   Temp
+    ADDI   1           ; this will result in ~0.1s timeout
+    STORE  Temp
+    JZERO  I2CError    ; Timeout occurred; error
+    IN     I2C_RDY     ; Read busy signal
+    JPOS   BI2CL       ; If not 0, try again
+    RETURN             ; Else return
 I2CError:
-	LOAD   Zero
-	ADDI   &H12C       ; "I2C"
-	OUT    SSEG1
-	OUT    SSEG2       ; display error message
-	JUMP   I2CError
+    LOAD   Zero
+    ADDI   &H12C       ; "I2C"
+    OUT    SSEG1
+    OUT    SSEG2       ; display error message
+    JUMP   I2CError
 
 ; Subroutines to send AC value through the UART,
 ; Calling UARTSend2 will send both bytes of AC
@@ -634,314 +634,314 @@ I2CError:
 ; escaped with the value 0x1B, thus the literal
 ; value 0x1B must be sent as 0x1B1B, should it occur.
 UARTSend2:
-	STORE  UARTTemp
-	SHIFT  -8
-	ADDI   -27   ; escape character
-	JZERO  UEsc1
-	ADDI   27
-	OUT    UART_DAT
-	JUMP   USend2
+    STORE  UARTTemp
+    SHIFT  -8
+    ADDI   -27   ; escape character
+    JZERO  UEsc1
+    ADDI   27
+    OUT    UART_DAT
+    JUMP   USend2
 UEsc1:
-	ADDI   27
-	OUT    UART_DAT
-	OUT    UART_DAT
+    ADDI   27
+    OUT    UART_DAT
+    OUT    UART_DAT
 USend2:
-	LOAD   UARTTemp
+    LOAD   UARTTemp
 UARTSend1:
-	AND    LowByte
-	ADDI   -27   ; escape character
-	JZERO  UEsc2
-	ADDI   27
-	OUT    UART_DAT
-	RETURN
+    AND    LowByte
+    ADDI   -27   ; escape character
+    JZERO  UEsc2
+    ADDI   27
+    OUT    UART_DAT
+    RETURN
 UEsc2:
-	ADDI   27
-	OUT    UART_DAT
-	OUT    UART_DAT
-	RETURN
-	UARTTemp: DW 0
+    ADDI   27
+    OUT    UART_DAT
+    OUT    UART_DAT
+    RETURN
+    UARTTemp: DW 0
 
 ; Subroutine to send a newline to the computer log
 UARTNL:
-	LOAD   NL
-	OUT    UART_DAT
-	SHIFT  -8
-	OUT    UART_DAT
-	RETURN
-	NL: DW &H0A1B
+    LOAD   NL
+    OUT    UART_DAT
+    SHIFT  -8
+    OUT    UART_DAT
+    RETURN
+    NL: DW &H0A1B
 
 ; Subroutine to send a space to the computer log
 UARTNBSP:
-	LOAD   NBSP
-	OUT    UART_DAT
-	SHIFT  -8
-	OUT    UART_DAT
-	RETURN
-	NBSP: DW &H201B
+    LOAD   NBSP
+    OUT    UART_DAT
+    SHIFT  -8
+    OUT    UART_DAT
+    RETURN
+    NBSP: DW &H201B
 
 ; Subroutine to clear the internal UART receive FIFO.
 UARTClear:
-	IN     UART_DAT
-	JNEG   UARTClear
-	RETURN
+    IN     UART_DAT
+    JNEG   UARTClear
+    RETURN
 
 ; Subroutine to tell the server that this position is one
 ; of the destinations.  Use AC=0 for generic indication,
 ; or AC=#1-12 for specific indication
 IndicateDest:
-	; AC contains which destination this is
-	AND    LowNibl    ; keep only #s 0-15
-	OUT    LEDS
-	STORE  IDNumber
-	LOADI  1
-	OUT    BEEP
-	STORE  IDFlag     ; set flag for indication
-	RETURN
-	IDNumber: DW 0
-	IDFlag: DW 0
-	
+    ; AC contains which destination this is
+    AND    LowNibl    ; keep only #s 0-15
+    OUT    LEDS
+    STORE  IDNumber
+    LOADI  1
+    OUT    BEEP
+    STORE  IDFlag     ; set flag for indication
+    RETURN
+    IDNumber: DW 0
+    IDFlag: DW 0
+    
 
 ; Timer interrupt, used to send position data to the server
 CTimer_ISR:
-	CALL   UARTNL ; newline
-	IN     XPOS
-	CALL   UARTSend2
-	IN     YPOS
-	CALL   UARTSend2
-	LOAD   timeOut ;increment timeOut 
-	ADDI   1
-	STORE  timeOut
-	ADDi   -20
-	JZERO  Pointers
-	LOAD   IDFlag ; check if user has request a destination indication
-	JPOS   CTIndicateDest ; if yes, do it; otherwise...
-	RETI   ; return from interrupt	
+    CALL   UARTNL ; newline
+    IN     XPOS
+    CALL   UARTSend2
+    IN     YPOS
+    CALL   UARTSend2
+    LOAD   timeOut ;increment timeOut 
+    ADDI   1
+    STORE  timeOut
+    ADDi   -20
+    JZERO  Pointers
+    LOAD   IDFlag ; check if user has request a destination indication
+    JPOS   CTIndicateDest ; if yes, do it; otherwise...
+    RETI   ; return from interrupt  
 CTIndicateDest:
-	LOAD   IDNumber
-	CALL   UARTSend1 ; send the indicated destination
-	LOADI  0
-	STORE  IDFlag
-	RETI
+    LOAD   IDNumber
+    CALL   UARTSend1 ; send the indicated destination
+    LOADI  0
+    STORE  IDFlag
+    RETI
 
-	
+    
 Sonar_ISR: ; Sonar interrupt
-    STORE	saveAC
-;	LOAD	SonarActive ;loads interrupt latch
-;	ADDI	-1
-;	JZERO	RECOVER ; checks to see if we are in the middle of an interrupt already
-;	RETI ; exit ISR
-	
+    STORE   saveAC
+;   LOAD    SonarActive ;loads interrupt latch
+;   ADDI    -1
+;   JZERO   RECOVER ; checks to see if we are in the middle of an interrupt already
+;   RETI ; exit ISR
+    
 RECOVER:
-	IN      SONALARM
-	STORE   actSonAlarm ; save the active alarms
-	LOAD    ZERO
-	OUT     SONAREN   ; disable sonar to prevent other alarms
-	
-;	STORE	SonarActive ; set SonarActive to 0 so it does not interrupt the interrupt
-	LOAD	actSonAlarm ; get the alarm register
-	JZERO   ENDSINTERUPT ; if Sonar is not active
-	
-	
+    IN      SONALARM
+    STORE   actSonAlarm ; save the active alarms
+    LOAD    ZERO
+    OUT     SONAREN   ; disable sonar to prevent other alarms
+    
+;   STORE   SonarActive ; set SonarActive to 0 so it does not interrupt the interrupt
+    LOAD    actSonAlarm ; get the alarm register
+    JZERO   ENDSINTERUPT ; if Sonar is not active
+    
+    
 ZERODEG:
-	AND 	Mask23 ; checks to see if the object is in FRONT of the DE2BOT
-	JZERO 	NEG44DEG ; nothing set, no turn
-	XOR 	Mask23 ; check for BOTH bits set
-	JZERO 	NEG44DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    180
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 180 if so mod it 
-	LOAD    eqOut
-	JNEG    add180	; if angle > 180 mod it; if not add 180
-	LOAD    eq1
-	CALL    Mod180
-	STORE   ANGLE
-	JUMP    sTurn
-	
+    AND     Mask23 ; checks to see if the object is in FRONT of the DE2BOT
+    JZERO   NEG44DEG ; nothing set, no turn
+    XOR     Mask23 ; check for BOTH bits set
+    JZERO   NEG44DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    180
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 180 if so mod it 
+    LOAD    eqOut
+    JNEG    add180  ; if angle > 180 mod it; if not add 180
+    LOAD    eq1
+    CALL    Mod180
+    STORE   ANGLE
+    JUMP    sTurn
+    
 add180: 
-	LOAD    eq1
-	ADDI    180
-	STORE   ANGLE
-	JUMP	sTurn
-	
+    LOAD    eq1
+    ADDI    180
+    STORE   ANGLE
+    JUMP    sTurn
+    
 
 NEG44DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask4 ; checks to see if the object is in FRONT RIGHT of DE2BOT
-	JZERO 	POS44DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    224
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 244 
-	LOAD    eqOut
-	JNEG    add136	; if angle >= 224 sub 224; if not add 136 
-	LOAD    eq1
-	ADDI    -224
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask4 ; checks to see if the object is in FRONT RIGHT of DE2BOT
+    JZERO   POS44DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    224
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 244 
+    LOAD    eqOut
+    JNEG    add136  ; if angle >= 224 sub 224; if not add 136 
+    LOAD    eq1
+    ADDI    -224
+    STORE   ANGLE
+    JUMP    sTurn
 
 add136: 
-	LOAD    eq1
-	ADDI    136
-	STORE   ANGLE
-	Jump    sTurn
+    LOAD    eq1
+    ADDI    136
+    STORE   ANGLE
+    Jump    sTurn
 
-	
+    
 POS44DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask1 ; checks to see if the object is in FRONT LEFT of DE2BOT
-	JZERO 	NEG90DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    136
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 136 
-	LOAD    eqOut
-	JNEG    add224	; if angle >= 136 add 224; if not sub 136 
-	LOAD    eq1
-	ADDI    -136
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask1 ; checks to see if the object is in FRONT LEFT of DE2BOT
+    JZERO   NEG90DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    136
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 136 
+    LOAD    eqOut
+    JNEG    add224  ; if angle >= 136 add 224; if not sub 136 
+    LOAD    eq1
+    ADDI    -136
+    STORE   ANGLE
+    JUMP    sTurn
 
 add224: 
-	LOAD    eq1
-	ADDI    224
-	STORE   ANGLE
-	Jump    sTurn
+    LOAD    eq1
+    ADDI    224
+    STORE   ANGLE
+    Jump    sTurn
 
-	
-	
+    
+    
 NEG90DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask5 ; checks to see if the object is RIGHT of DE2BOT
-	JZERO 	POS90DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    270
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 270 
-	LOAD    eqOut
-	JNEG    add90	; if angle >= 270 sub 270; if not add 90 
-	LOAD    eq1
-	ADDI    -270
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask5 ; checks to see if the object is RIGHT of DE2BOT
+    JZERO   POS90DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    270
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 270 
+    LOAD    eqOut
+    JNEG    add90   ; if angle >= 270 sub 270; if not add 90 
+    LOAD    eq1
+    ADDI    -270
+    STORE   ANGLE
+    JUMP    sTurn
 
 add90: 
-	LOAD    eq1
-	ADDI    90
-	STORE   ANGLE
-	Jump    sTurn	
+    LOAD    eq1
+    ADDI    90
+    STORE   ANGLE
+    Jump    sTurn   
 
 
-	
+    
 POS90DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask0 ; checks to see if the object is LEFT of DE2BOT
-	JZERO 	NEG144DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    90
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 90
-	LOAD    eqOut
-	JNEG    add270	; if angle >= 90 sub 90; if not add 270 
-	LOAD    eq1
-	ADDI    -90
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask0 ; checks to see if the object is LEFT of DE2BOT
+    JZERO   NEG144DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    90
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 90
+    LOAD    eqOut
+    JNEG    add270  ; if angle >= 90 sub 90; if not add 270 
+    LOAD    eq1
+    ADDI    -90
+    STORE   ANGLE
+    JUMP    sTurn
 
 add270: 
-	LOAD    eq1
-	ADDI    270
-	STORE   ANGLE
-	Jump    sTurn	
+    LOAD    eq1
+    ADDI    270
+    STORE   ANGLE
+    Jump    sTurn   
 
 
 
 
 NEG144DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
-	JZERO 	POS144DEG ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    324
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 324
-	LOAD    eqOut
-	JNEG    add36	; if angle > 324 sub 324; if not add 36 
-	LOAD    eq1
-	ADDI    -324
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
+    JZERO   POS144DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    324
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 324
+    LOAD    eqOut
+    JNEG    add36   ; if angle > 324 sub 324; if not add 36 
+    LOAD    eq1
+    ADDI    -324
+    STORE   ANGLE
+    JUMP    sTurn
 
 add36: 
-	LOAD    eq1
-	ADDI    36
-	STORE   ANGLE
-	Jump    sTurn	
+    LOAD    eq1
+    ADDI    36
+    STORE   ANGLE
+    Jump    sTurn   
 
 POS144DEG:
-	LOAD	actSonAlarm ; get the alarm register
-	AND 	Mask7 ; checks to see if the object is BACK LEFT of DE2BOT
-	JZERO 	ENDSINTERUPT ; nothing set, no turn
-	
-	IN      THETA	;get the current angle we are facing
-	STORE   eq1		
-	LOAD    ZERO
-	ADDI    36
-	STORE   eq2
-	CALL    compare ;check if the angle is greater then 36
-	LOAD    eqOut
-	JNEG    sub36	; if angle >= 36 sub 36; if not add 324 
-	LOAD    eq1
-	ADDI    324
-	STORE   ANGLE
-	JUMP    sTurn
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask7 ; checks to see if the object is BACK LEFT of DE2BOT
+    JZERO   ENDSINTERUPT ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    36
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 36
+    LOAD    eqOut
+    JNEG    sub36   ; if angle >= 36 sub 36; if not add 324 
+    LOAD    eq1
+    ADDI    324
+    STORE   ANGLE
+    JUMP    sTurn
 
 sub36: 
-	LOAD    eq1
-	ADDI    -36
-	STORE   ANGLE
-	Jump    sTurn		
-	
-	
+    LOAD    eq1
+    ADDI    -36
+    STORE   ANGLE
+    Jump    sTurn       
+    
+    
 
 
-sTurn: 				; Turns the robot to the new angle then jumps to move code
-	CALL	TurnTo
-	JUMP    sMove
+sTurn:              ; Turns the robot to the new angle then jumps to move code
+    CALL    TurnTo
+    JUMP    sMove
 sMove:
-	LOAD	Fmid
-    OUT		RVelcmd
-	ADDI 	-15		   ; For robot #69.
-    OUT 	LVelcmd
-	CALL	Wait2
-	JUMP	ENDSINTERUPT
+    LOAD    Fmid
+    OUT     RVelcmd
+    ADDI    -15        ; For robot #69.
+    OUT     LVelcmd
+    CALL    Wait2
+    JUMP    ENDSINTERUPT
  
 ENDSINTERUPT:
-;	LOAD	ONE
-;	STORE	SonarActive ; unlatches interrupt 
-	LOAD    ZERO
-	ADDI    &HFF
-	OUT     SONAREN ;rearm sonar sensors
-	LOAD    saveAC
-	JUMP    GoTo
+;   LOAD    ONE
+;   STORE   SonarActive ; unlatches interrupt 
+    LOAD    ZERO
+    ADDI    &HFF
+    OUT     SONAREN ;rearm sonar sensors
+    LOAD    saveAC
+    JUMP    GoTo
 
 ;SonarActive: DW 1
 ANGLEMAG: DW 0
@@ -953,23 +953,23 @@ actSonAlarm: DW 0
 
 ; Configure the interrupt timer and enable interrupts
 StartLog:
-	; See supporting information on the powersof2 site for how
-	; SCOMP's communication system works.
-	CALL   UARTNL      ; send a newline to separate data
-	LOADI  0
-	STORE  IDFlag      ; clear any pending flag
-	LOADI  50
-	OUT    CTIMER      ; configure timer for 0.01*50=0.5s interrupts
-	CLI    &B0010      ; clear any pending interrupt from timer
-	SEI    &B0010      ; enable interrupt from timer (source 1)
-	RETURN
+    ; See supporting information on the powersof2 site for how
+    ; SCOMP's communication system works.
+    CALL   UARTNL      ; send a newline to separate data
+    LOADI  0
+    STORE  IDFlag      ; clear any pending flag
+    LOADI  50
+    OUT    CTIMER      ; configure timer for 0.01*50=0.5s interrupts
+    CLI    &B0010      ; clear any pending interrupt from timer
+    SEI    &B0010      ; enable interrupt from timer (source 1)
+    RETURN
 
 ; Disable the interrupt timer and interrupts
 StopLog:
-	CLI    &B0010      ; disable interrupt source 1 (timer)
-	LOADI  0
-	OUT    CTIMER      ; reset configurable timer
-	RETURN
+    CLI    &B0010      ; disable interrupt source 1 (timer)
+    LOADI  0
+    OUT    CTIMER      ; reset configurable timer
+    RETURN
 
 ;******************************************************************************;
 ; Atan2: 4-quadrant arctangent calculation                                     ;
@@ -993,115 +993,115 @@ StopLog:
 ; - LowByte: DW &HFF                                                           ;
 ;******************************************************************************;
 Atan2:
-	LOAD   AtanY
-	CALL   Abs          ; abs(y)
-	STORE  AtanT
-	LOAD   AtanX        ; abs(x)
-	CALL   Abs
-	SUB    AtanT        ; abs(x) - abs(y)
-	JNEG   A2_sw        ; if abs(y) > abs(x), switch arguments.
-	LOAD   AtanX        ; Octants 1, 4, 5, 8
-	JNEG   A2_R3
-	CALL   A2_calc      ; Octants 1, 8
-	JNEG   A2_R1n
-	RETURN              ; Return raw value if in octant 1
+    LOAD   AtanY
+    CALL   Abs          ; abs(y)
+    STORE  AtanT
+    LOAD   AtanX        ; abs(x)
+    CALL   Abs
+    SUB    AtanT        ; abs(x) - abs(y)
+    JNEG   A2_sw        ; if abs(y) > abs(x), switch arguments.
+    LOAD   AtanX        ; Octants 1, 4, 5, 8
+    JNEG   A2_R3
+    CALL   A2_calc      ; Octants 1, 8
+    JNEG   A2_R1n
+    RETURN              ; Return raw value if in octant 1
 A2_R1n: ; region 1 negative
-	ADDI   360          ; Add 360 if we are in octant 8
-	RETURN
+    ADDI   360          ; Add 360 if we are in octant 8
+    RETURN
 A2_R3: ; region 3
-	CALL   A2_calc      ; Octants 4, 5            
-	ADDI   180          ; theta' = theta + 180
-	RETURN
+    CALL   A2_calc      ; Octants 4, 5            
+    ADDI   180          ; theta' = theta + 180
+    RETURN
 A2_sw: ; switch arguments; octants 2, 3, 6, 7 
-	LOAD   AtanY        ; Swap input arguments
-	STORE  AtanT
-	LOAD   AtanX
-	STORE  AtanY
-	LOAD   AtanT
-	STORE  AtanX
-	JPOS   A2_R2        ; If Y positive, octants 2,3
-	CALL   A2_calc      ; else octants 6, 7
-	XOR    NegOne
-	ADDI   1            ; negate the angle
-	ADDI   270          ; theta' = 270 - theta
-	RETURN
+    LOAD   AtanY        ; Swap input arguments
+    STORE  AtanT
+    LOAD   AtanX
+    STORE  AtanY
+    LOAD   AtanT
+    STORE  AtanX
+    JPOS   A2_R2        ; If Y positive, octants 2,3
+    CALL   A2_calc      ; else octants 6, 7
+    XOR    NegOne
+    ADDI   1            ; negate the angle
+    ADDI   270          ; theta' = 270 - theta
+    RETURN
 A2_R2: ; region 2
-	CALL   A2_calc      ; Octants 2, 3
-	XOR    NegOne
-	ADDI   1            ; negate the angle
-	ADDI   90           ; theta' = 90 - theta
-	RETURN
+    CALL   A2_calc      ; Octants 2, 3
+    XOR    NegOne
+    ADDI   1            ; negate the angle
+    ADDI   90           ; theta' = 90 - theta
+    RETURN
 A2_calc:
-	; calculates R/(1 + 0.28125*R^2)
-	LOAD   AtanY
-	STORE  d16sN        ; Y in numerator
-	LOAD   AtanX
-	STORE  d16sD        ; X in denominator
-	CALL   A2_div       ; divide
-	LOAD   dres16sQ     ; get the quotient (remainder ignored)
-	STORE  AtanRatio
-	STORE  m16sA
-	STORE  m16sB
-	CALL   A2_mult      ; X^2
-	STORE  m16sA
-	LOAD   A2c
-	STORE  m16sB
-	CALL   A2_mult
-	ADDI   256          ; 256/256+0.28125X^2
-	STORE  d16sD
-	LOAD   AtanRatio
-	STORE  d16sN        ; Ratio in numerator
-	CALL   A2_div       ; divide
-	LOAD   dres16sQ     ; get the quotient (remainder ignored)
-	STORE  m16sA        ; <= result in radians
-	LOAD   A2cd         ; degree conversion factor
-	STORE  m16sB
-	CALL   A2_mult      ; convert to degrees
-	STORE  AtanT
-	SHIFT  -7           ; check 7th bit
-	AND    One
-	JZERO  A2_rdwn      ; round down
-	LOAD   AtanT
-	SHIFT  -8
-	ADDI   1            ; round up
-	RETURN
+    ; calculates R/(1 + 0.28125*R^2)
+    LOAD   AtanY
+    STORE  d16sN        ; Y in numerator
+    LOAD   AtanX
+    STORE  d16sD        ; X in denominator
+    CALL   A2_div       ; divide
+    LOAD   dres16sQ     ; get the quotient (remainder ignored)
+    STORE  AtanRatio
+    STORE  m16sA
+    STORE  m16sB
+    CALL   A2_mult      ; X^2
+    STORE  m16sA
+    LOAD   A2c
+    STORE  m16sB
+    CALL   A2_mult
+    ADDI   256          ; 256/256+0.28125X^2
+    STORE  d16sD
+    LOAD   AtanRatio
+    STORE  d16sN        ; Ratio in numerator
+    CALL   A2_div       ; divide
+    LOAD   dres16sQ     ; get the quotient (remainder ignored)
+    STORE  m16sA        ; <= result in radians
+    LOAD   A2cd         ; degree conversion factor
+    STORE  m16sB
+    CALL   A2_mult      ; convert to degrees
+    STORE  AtanT
+    SHIFT  -7           ; check 7th bit
+    AND    One
+    JZERO  A2_rdwn      ; round down
+    LOAD   AtanT
+    SHIFT  -8
+    ADDI   1            ; round up
+    RETURN
 A2_rdwn:
-	LOAD   AtanT
-	SHIFT  -8           ; round down
-	RETURN
+    LOAD   AtanT
+    SHIFT  -8           ; round down
+    RETURN
 A2_mult: ; multiply, and return bits 23..8 of result
-	CALL   Mult16s
-	LOAD   mres16sH
-	SHIFT  8            ; move high word of result up 8 bits
-	STORE  mres16sH
-	LOAD   mres16sL
-	SHIFT  -8           ; move low word of result down 8 bits
-	AND    LowByte
-	OR     mres16sH     ; combine high and low words of result
-	RETURN
+    CALL   Mult16s
+    LOAD   mres16sH
+    SHIFT  8            ; move high word of result up 8 bits
+    STORE  mres16sH
+    LOAD   mres16sL
+    SHIFT  -8           ; move low word of result down 8 bits
+    AND    LowByte
+    OR     mres16sH     ; combine high and low words of result
+    RETURN
 A2_div: ; 16-bit division scaled by 256, minimizing error
-	LOADI  9            ; loop 8 times (256 = 2^8)
-	STORE  AtanT
+    LOADI  9            ; loop 8 times (256 = 2^8)
+    STORE  AtanT
 A2_DL:
-	LOAD   AtanT
-	ADDI   -1
-	JPOS   A2_DN        ; not done; continue shifting
-	CALL   Div16s       ; do the standard division
-	RETURN
+    LOAD   AtanT
+    ADDI   -1
+    JPOS   A2_DN        ; not done; continue shifting
+    CALL   Div16s       ; do the standard division
+    RETURN
 A2_DN:
-	STORE  AtanT
-	LOAD   d16sN        ; start by trying to scale the numerator
-	SHIFT  1
-	XOR    d16sN        ; if the sign changed,
-	JNEG   A2_DD        ; switch to scaling the denominator
-	XOR    d16sN        ; get back shifted version
-	STORE  d16sN
-	JUMP   A2_DL
+    STORE  AtanT
+    LOAD   d16sN        ; start by trying to scale the numerator
+    SHIFT  1
+    XOR    d16sN        ; if the sign changed,
+    JNEG   A2_DD        ; switch to scaling the denominator
+    XOR    d16sN        ; get back shifted version
+    STORE  d16sN
+    JUMP   A2_DL
 A2_DD:
-	LOAD   d16sD
-	SHIFT  -1           ; have to scale denominator
-	STORE  d16sD
-	JUMP   A2_DL
+    LOAD   d16sD
+    SHIFT  -1           ; have to scale denominator
+    STORE  d16sD
+    JUMP   A2_DL
 AtanX:      DW 0
 AtanY:      DW 0
 AtanRatio:  DW 0        ; =y/x
@@ -1120,43 +1120,43 @@ A2cd:       DW 14668    ; = 180/pi with 8 fractional bits
 ; - Result is stored in mres16sH and mres16sL (high and low words).
 ;*******************************************************************************
 Mult16s:
-	LOADI  0
-	STORE  m16sc        ; clear carry
-	STORE  mres16sH     ; clear result
-	LOADI  16           ; load 16 to counter
+    LOADI  0
+    STORE  m16sc        ; clear carry
+    STORE  mres16sH     ; clear result
+    LOADI  16           ; load 16 to counter
 Mult16s_loop:
-	STORE  mcnt16s      
-	LOAD   m16sc        ; check the carry (from previous iteration)
-	JZERO  Mult16s_noc  ; if no carry, move on
-	LOAD   mres16sH     ; if a carry, 
-	ADD    m16sA        ;  add multiplicand to result H
-	STORE  mres16sH
+    STORE  mcnt16s      
+    LOAD   m16sc        ; check the carry (from previous iteration)
+    JZERO  Mult16s_noc  ; if no carry, move on
+    LOAD   mres16sH     ; if a carry, 
+    ADD    m16sA        ;  add multiplicand to result H
+    STORE  mres16sH
 Mult16s_noc: ; no carry
-	LOAD   m16sB
-	AND    One          ; check bit 0 of multiplier
-	STORE  m16sc        ; save as next carry
-	JZERO  Mult16s_sh   ; if no carry, move on to shift
-	LOAD   mres16sH     ; if bit 0 set,
-	SUB    m16sA        ;  subtract multiplicand from result H
-	STORE  mres16sH
+    LOAD   m16sB
+    AND    One          ; check bit 0 of multiplier
+    STORE  m16sc        ; save as next carry
+    JZERO  Mult16s_sh   ; if no carry, move on to shift
+    LOAD   mres16sH     ; if bit 0 set,
+    SUB    m16sA        ;  subtract multiplicand from result H
+    STORE  mres16sH
 Mult16s_sh:
-	LOAD   m16sB
-	SHIFT  -1           ; shift result L >>1
-	AND    c7FFF        ; clear msb
-	STORE  m16sB
-	LOAD   mres16sH     ; load result H
-	SHIFT  15           ; move lsb to msb
-	OR     m16sB
-	STORE  m16sB        ; result L now includes carry out from H
-	LOAD   mres16sH
-	SHIFT  -1
-	STORE  mres16sH     ; shift result H >>1
-	LOAD   mcnt16s
-	ADDI   -1           ; check counter
-	JPOS   Mult16s_loop ; need to iterate 16 times
-	LOAD   m16sB
-	STORE  mres16sL     ; multiplier and result L shared a word
-	RETURN              ; Done
+    LOAD   m16sB
+    SHIFT  -1           ; shift result L >>1
+    AND    c7FFF        ; clear msb
+    STORE  m16sB
+    LOAD   mres16sH     ; load result H
+    SHIFT  15           ; move lsb to msb
+    OR     m16sB
+    STORE  m16sB        ; result L now includes carry out from H
+    LOAD   mres16sH
+    SHIFT  -1
+    STORE  mres16sH     ; shift result H >>1
+    LOAD   mcnt16s
+    ADDI   -1           ; check counter
+    JPOS   Mult16s_loop ; need to iterate 16 times
+    LOAD   m16sB
+    STORE  mres16sL     ; multiplier and result L shared a word
+    RETURN              ; Done
 c7FFF: DW &H7FFF
 m16sA: DW 0 ; multiplicand
 m16sB: DW 0 ; multipler
@@ -1176,60 +1176,60 @@ mres16sH: DW 0 ; result high
 ; Requires Abs subroutine
 ;*******************************************************************************
 Div16s:
-	LOADI  0
-	STORE  dres16sR     ; clear remainder result
-	STORE  d16sC1       ; clear carry
-	LOAD   d16sN
-	XOR    d16sD
-	STORE  d16sS        ; sign determination = N XOR D
-	LOADI  17
-	STORE  d16sT        ; preload counter with 17 (16+1)
-	LOAD   d16sD
-	CALL   Abs          ; take absolute value of denominator
-	STORE  d16sD
-	LOAD   d16sN
-	CALL   Abs          ; take absolute value of numerator
-	STORE  d16sN
+    LOADI  0
+    STORE  dres16sR     ; clear remainder result
+    STORE  d16sC1       ; clear carry
+    LOAD   d16sN
+    XOR    d16sD
+    STORE  d16sS        ; sign determination = N XOR D
+    LOADI  17
+    STORE  d16sT        ; preload counter with 17 (16+1)
+    LOAD   d16sD
+    CALL   Abs          ; take absolute value of denominator
+    STORE  d16sD
+    LOAD   d16sN
+    CALL   Abs          ; take absolute value of numerator
+    STORE  d16sN
 Div16s_loop:
-	LOAD   d16sN
-	SHIFT  -15          ; get msb
-	AND    One          ; only msb (because shift is arithmetic)
-	STORE  d16sC2       ; store as carry
-	LOAD   d16sN
-	SHIFT  1            ; shift <<1
-	OR     d16sC1       ; with carry
-	STORE  d16sN
-	LOAD   d16sT
-	ADDI   -1           ; decrement counter
-	JZERO  Div16s_sign  ; if finished looping, finalize result
-	STORE  d16sT
-	LOAD   dres16sR
-	SHIFT  1            ; shift remainder
-	OR     d16sC2       ; with carry from other shift
-	SUB    d16sD        ; subtract denominator from remainder
-	JNEG   Div16s_add   ; if negative, need to add it back
-	STORE  dres16sR
-	LOADI  1
-	STORE  d16sC1       ; set carry
-	JUMP   Div16s_loop
+    LOAD   d16sN
+    SHIFT  -15          ; get msb
+    AND    One          ; only msb (because shift is arithmetic)
+    STORE  d16sC2       ; store as carry
+    LOAD   d16sN
+    SHIFT  1            ; shift <<1
+    OR     d16sC1       ; with carry
+    STORE  d16sN
+    LOAD   d16sT
+    ADDI   -1           ; decrement counter
+    JZERO  Div16s_sign  ; if finished looping, finalize result
+    STORE  d16sT
+    LOAD   dres16sR
+    SHIFT  1            ; shift remainder
+    OR     d16sC2       ; with carry from other shift
+    SUB    d16sD        ; subtract denominator from remainder
+    JNEG   Div16s_add   ; if negative, need to add it back
+    STORE  dres16sR
+    LOADI  1
+    STORE  d16sC1       ; set carry
+    JUMP   Div16s_loop
 Div16s_add:
-	ADD    d16sD        ; add denominator back in
-	STORE  dres16sR
-	LOADI  0
-	STORE  d16sC1       ; clear carry
-	JUMP   Div16s_loop
+    ADD    d16sD        ; add denominator back in
+    STORE  dres16sR
+    LOADI  0
+    STORE  d16sC1       ; clear carry
+    JUMP   Div16s_loop
 Div16s_sign:
-	LOAD   d16sN
-	STORE  dres16sQ     ; numerator was used to hold quotient result
-	LOAD   d16sS        ; check the sign indicator
-	JNEG   Div16s_neg
-	RETURN
+    LOAD   d16sN
+    STORE  dres16sQ     ; numerator was used to hold quotient result
+    LOAD   d16sS        ; check the sign indicator
+    JNEG   Div16s_neg
+    RETURN
 Div16s_neg:
-	LOAD   dres16sQ     ; need to negate the result
-	XOR    NegOne
-	ADDI   1
-	STORE  dres16sQ
-	RETURN	
+    LOAD   dres16sQ     ; need to negate the result
+    XOR    NegOne
+    ADDI   1
+    STORE  dres16sQ
+    RETURN  
 d16sN: DW 0 ; numerator
 d16sD: DW 0 ; denominator
 d16sS: DW 0 ; sign value
@@ -1282,30 +1282,30 @@ eqOut: DW &H0000 ; output
 ; Written by Kevin Johnson.  No licence or copyright applied.
 ;*******************************************************************************
 Abs:
-	JPOS   Abs_r
-	XOR    NegOne       ; Flip all bits
-	ADDI   1            ; Add one (i.e. negate number)
+    JPOS   Abs_r
+    XOR    NegOne       ; Flip all bits
+    ADDI   1            ; Add one (i.e. negate number)
 Abs_r:
-	RETURN
+    RETURN
 
 ;*******************************************************************************
 ; Mod180: modulo 180
 ; Returns AC%180 in AC
 ; Written by Kevin Johnson.  No licence or copyright applied.
-;*******************************************************************************	
+;*******************************************************************************    
 Mod180:
-	JNEG   Mod180n      ; handle negatives
+    JNEG   Mod180n      ; handle negatives
 Mod180p:
-	ADDI   -180
-	JPOS   Mod180p      ; subtract 180 until negative
-	ADDI   180          ; go back positive
-	RETURN
+    ADDI   -180
+    JPOS   Mod180p      ; subtract 180 until negative
+    ADDI   180          ; go back positive
+    RETURN
 Mod180n:
-	ADDI   180          ; add 180 until positive
-	JNEG   Mod180n
-	ADDI   -180         ; go back negative
-	RETURN
-	
+    ADDI   180          ; add 180 until positive
+    JNEG   Mod180n
+    ADDI   -180         ; go back negative
+    RETURN
+    
 ;*******************************************************************************
 ; L2Estimate:  Pythagorean distance estimation
 ; Written by Kevin Johnson.  No licence or copyright applied.
@@ -1319,58 +1319,58 @@ Mod180n:
 ; Requires Abs and Mult16s subroutines.
 ;*******************************************************************************
 L2Estimate:
-	; take abs() of each value, and find the largest one
-	LOAD   L2X
-	CALL   Abs
-	STORE  L2T1
-	LOAD   L2Y
-	CALL   Abs
-	SUB    L2T1
-	JNEG   GDSwap    ; swap if needed to get largest value in X
-	ADD    L2T1
+    ; take abs() of each value, and find the largest one
+    LOAD   L2X
+    CALL   Abs
+    STORE  L2T1
+    LOAD   L2Y
+    CALL   Abs
+    SUB    L2T1
+    JNEG   GDSwap    ; swap if needed to get largest value in X
+    ADD    L2T1
 CalcDist:
-	; Calculation is max(X,Y)*0.961+min(X,Y)*0.406
-	STORE  m16sa
-	LOADI  246       ; max * 246
-	STORE  m16sB
-	CALL   Mult16s
-	LOAD   mres16sH
-	SHIFT  8
-	STORE  L2T2
-	LOAD   mres16sL
-	SHIFT  -8        ; / 256
-	AND    LowByte
-	OR     L2T2
-	STORE  L2T3
-	LOAD   L2T1
-	STORE  m16sa
-	LOADI  104       ; min * 104
-	STORE  m16sB
-	CALL   Mult16s
-	LOAD   mres16sH
-	SHIFT  8
-	STORE  L2T2
-	LOAD   mres16sL
-	SHIFT  -8        ; / 256
-	AND    LowByte
-	OR     L2T2
-	ADD    L2T3     ; sum
-	RETURN
+    ; Calculation is max(X,Y)*0.961+min(X,Y)*0.406
+    STORE  m16sa
+    LOADI  246       ; max * 246
+    STORE  m16sB
+    CALL   Mult16s
+    LOAD   mres16sH
+    SHIFT  8
+    STORE  L2T2
+    LOAD   mres16sL
+    SHIFT  -8        ; / 256
+    AND    LowByte
+    OR     L2T2
+    STORE  L2T3
+    LOAD   L2T1
+    STORE  m16sa
+    LOADI  104       ; min * 104
+    STORE  m16sB
+    CALL   Mult16s
+    LOAD   mres16sH
+    SHIFT  8
+    STORE  L2T2
+    LOAD   mres16sL
+    SHIFT  -8        ; / 256
+    AND    LowByte
+    OR     L2T2
+    ADD    L2T3     ; sum
+    RETURN
 GDSwap: ; swaps the incoming X and Y
-	ADD    L2T1
-	STORE  L2T2
-	LOAD   L2T1
-	STORE  L2T3
-	LOAD   L2T2
-	STORE  L2T1
-	LOAD   L2T3
-	JUMP   CalcDist
+    ADD    L2T1
+    STORE  L2T2
+    LOAD   L2T1
+    STORE  L2T3
+    LOAD   L2T2
+    STORE  L2T1
+    LOAD   L2T3
+    JUMP   CalcDist
 L2X:  DW 0
 L2Y:  DW 0
 L2T1: DW 0
 L2T2: DW 0
 L2T3: DW 0
-	
+    
 ;***************************************************************
 ;* Variables
 ;***************************************************************
