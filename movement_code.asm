@@ -123,26 +123,34 @@ GoTo:
     ;STORE angle        ; Save angle to next point
 	;OUT SSEG1
 
-    CALL curve
+    CALL 	curve
     ; Should be at point now. Indicate and get next point.
     ; If no more points, die.
-    ILOAD lptr
-    CALL IndicateDest   ; Tell computer where we are
-    LOAD xptr           ; Increment pointers
-    ADDI 1              ; |
-    STORE xptr          ; |
-    LOAD yptr           ; |
-    ADDI 1              ; |
-    STORE yptr          ; |
-    LOAD lptr           ; |
-    ADDI 1              ; |
-    STORE lptr          ; /
-    LOAD count          ; Increment counter
-    ADDI 1
-    STORE count
-    ADDI -1
-    JZERO Die           ; If count = 12, then we finished the last point
-    JUMP GoTo
+	LOAD 	ZERO
+	STORE 	timeOut
+    ILOAD 	lptr
+    CALL 	IndicateDest   ; Tell computer where we are
+	
+Pointers:
+    LOAD 	xptr           ; Increment pointers
+    ADDI 	1              ; |
+    STORE 	xptr          ; |
+    LOAD 	yptr           ; |
+    ADDI 	1              ; |
+    STORE 	yptr          ; |
+    LOAD 	lptr           ; |
+    ADDI 	1              ; |
+    STORE 	lptr          ; /
+    LOAD 	count          ; Increment counter
+    ADDI 	1
+    STORE 	count
+    ADDI 	-1
+    JZERO 	Die           ; If count = 12, then we finished the last point
+	CAll 	Wait3
+	LOAD 	ZERO
+	OUT  	BEEP
+	OUT  	LEDS
+    JUMP 	GoTo
 
     ;CALL TurnTo
 	;LOAD ZERO
@@ -150,7 +158,7 @@ GoTo:
 	;OUT LVelcmd
     ;LOADI 5
 	;CALL WaitAC        ; Wait half a second
-	JUMP Die
+	JUMP 	Die
 
 ; Don't really need this anymore (save until test curving code)
 move:                  ; Start moving
@@ -195,6 +203,7 @@ atPoint:               ; Made it to the point. Announce and get next point
     JZERO Die
     LOADI 5
     CALL WaitAC        ; Wait half a second
+	
     JUMP GoTo
     
 Deadzone: DW 5  
@@ -203,6 +212,7 @@ X:      DW 0
 Y:      DW 0
 angle:  DW 0
 dist:   DW 0
+timeOut: DW 0
 
 Die:
 ; Sometimes it's useful to permanently stop execution.
@@ -513,12 +523,21 @@ Wloop:
 	JNEG   Wloop
 	RETURN
 	
-; Subroutine to wait (block) for 2 second
+; Subroutine to wait (block) for 1.5 second
 Wait2:
 	OUT    TIMER
 Wloo2:
 	IN     TIMER
 	ADDI   -15         ; 1.5 second in 10Hz.
+	JNEG   Wloop
+	RETURN
+
+; Subroutine to wait (block) for .2 second
+Wait3:
+	OUT    TIMER
+Wloo2:
+	IN     TIMER
+	ADDI   -2         ; .2 second in 10Hz.
 	JNEG   Wloop
 	RETURN
 	
@@ -672,8 +691,10 @@ UARTClear:
 IndicateDest:
 	; AC contains which destination this is
 	AND    LowNibl    ; keep only #s 0-15
+	OUT    LEDS
 	STORE  IDNumber
 	LOADI  1
+	OUT    BEEP
 	STORE  IDFlag     ; set flag for indication
 	RETURN
 	IDNumber: DW 0
@@ -687,6 +708,11 @@ CTimer_ISR:
 	CALL   UARTSend2
 	IN     YPOS
 	CALL   UARTSend2
+	LOAD   timeOut ;increment timeOut 
+	ADDI   1
+	STORE  timeOut
+	ADDi   -20
+	JZERO  Pointers
 	LOAD   IDFlag ; check if user has request a destination indication
 	JPOS   CTIndicateDest ; if yes, do it; otherwise...
 	RETI   ; return from interrupt	
@@ -846,7 +872,7 @@ add270:
 
 
 
-NEG144DEGREES:
+NEG144DEG:
 	LOAD	actSonAlarm ; get the alarm register
 	AND 	Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
 	JZERO 	POS144DEG ; nothing set, no turn
