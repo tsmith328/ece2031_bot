@@ -42,7 +42,7 @@ Init:
 	OUT    SONARINT    ; Enable sonar interrupts
 	LOAD   ZERO
 	ADDI   153         ; 6 inches in mm
-	OUT    SONALARM:   ; Set sonar alarm distance to 6 inches 
+	OUT    SONALARM   ; Set sonar alarm distance to 6 inches 
 	LOAD   ZERO
 	OUT    BEEP        ; Stop any beeping
 	
@@ -535,7 +535,7 @@ Wloo2:
 ; Subroutine to wait (block) for .2 second
 Wait3:
 	OUT    TIMER
-Wloo2:
+Wloo3:
 	IN     TIMER
 	ADDI   -2         ; .2 second in 10Hz.
 	JNEG   Wloop
@@ -1412,6 +1412,7 @@ Mask4:    DW &B00010000
 Mask5:    DW &B00100000
 Mask6:    DW &B01000000
 Mask7:    DW &B10000000
+Mask23:   DW &B00001100
 LowByte:  DW &HFF      ; binary 00000000 1111111
 LowNibl:  DW &HF       ; 0000 0000 0000 1111
 
