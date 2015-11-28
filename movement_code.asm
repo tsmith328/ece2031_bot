@@ -126,6 +126,8 @@ GoTo:
     CALL    curve
     ; Should be at point now. Indicate and get next point.
     ; If no more points, die.
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD    ZERO
     STORE   timeOut
     ILOAD   lptr
@@ -241,6 +243,8 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 ;        Returns when robot reaches the point
 ;***************************************************************
 curve:
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN Xpos
     STORE X
     IN Ypos
@@ -248,6 +252,8 @@ curve:
     CALL calc_dxdy  ; Get differences in X and Y
     LOAD dX
     STORE AtanX
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD dY
     STORE AtanY
     CALL Atan2      ; Get angle to the point
@@ -262,6 +268,8 @@ curve:
     LOADI 1
     STORE ang_more
 curvetest2:         ; Test if difference < 180 deg.
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     SUB angle
     CALL abs
@@ -274,6 +282,8 @@ curvetest2:         ; Test if difference < 180 deg.
     LOADI 1
     STORE diff_more
 done_test:
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD ang_more
     AND diff_more
     JPOS case1      ; 4 cases
@@ -284,6 +294,8 @@ done_test:
     JUMP case2
 ; Different cases for determining wheel speeds for turning
 case1: ; angle > theta and | angle - theta| > 180
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     STORE angle1
     LOAD Deg360
@@ -292,11 +304,15 @@ case1: ; angle > theta and | angle - theta| > 180
     STORE turn_ang
     JUMP curveleft
 case2: ; angle < theta and | angle - theta| < 180
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     SUB angle
     STORE turn_ang
     JUMP curveleft
 case3: ; angle < theta and | angle - theta| > 180
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     STORE angle1
     LOAD Deg360
@@ -305,6 +321,8 @@ case3: ; angle < theta and | angle - theta| > 180
     STORE turn_ang
     JUMP curveright
 case4: ; angle > theta and | angle - theta| < 180
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     STORE angle1
     LOAD angle
@@ -313,6 +331,8 @@ case4: ; angle > theta and | angle - theta| < 180
     JUMP curveright
 
 curveleft:          ; Change values of wheels to turn left
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD turn_ang
     STORE m16sA
     LOADI 700
@@ -335,10 +355,14 @@ curveleft:          ; Change values of wheels to turn left
     OUT SSEG1
     JUMP left_move
 small_left:
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD dres16sQ
     STORE spd_diff
     OUT SSEG1
 left_move:
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD Fmid
     OUT RVelcmd
     SUB spd_diff
@@ -379,6 +403,8 @@ right_move:
     JUMP check_dist
 
 check_dist:         ; Checks distance to point
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN Xpos
     STORE X
     IN Ypos
@@ -427,6 +453,8 @@ dX: DW 0
 ;***************************************************************
 TurnTo:
     ; Determine direction to turn
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN THETA
     OUT SSEG2
     STORE eq2
@@ -442,12 +470,16 @@ TurnTo:
     LOAD Deg180
     STORE eq2
     CALL compare    ; Compares difference and 180 deg.
+	LOAD SonarTripped
+	JPos SonIsTrip
     LOAD eqOut
     SUB TurnTemp    ; If same (AC = 0), turn left, else turn right
     OUT LCD
     JZERO turnright
     JUMP turnleft
 turnright:
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN theta
     OUT SSEG2
     SUB angle
@@ -460,6 +492,8 @@ turnright:
     OUT RVelcmd
     JUMP turnright
 turnleft:
+	LOAD SonarTripped
+	JPos SonIsTrip
     IN theta
     OUT SSEG2
     SUB angle
@@ -472,9 +506,246 @@ turnleft:
     OUT RVelcmd
     JUMP turnleft
 TurnRet:
+	LOAD SonarTripped
+	JPos SonIsTrip
     RETURN
 
 TurnTemp:   DW 0
+
+;***************************************************************
+; Handles Sonar When Tripped
+; 
+;
+;
+;***************************************************************
+
+SonIsTrip:
+    STORE   saveAC
+;   LOAD    SonarActive ;loads interrupt latch
+;   ADDI    -1
+;   JZERO   RECOVER ; checks to see if we are in the middle of an interrupt already
+;   RETI ; exit ISR
+    
+RECOVER:
+    IN      SONALARM
+    STORE   actSonAlarm ; save the active alarms
+    LOAD    ZERO
+    OUT     SONAREN   ; disable sonar to prevent other alarms
+    
+;   STORE   SonarActive ; set SonarActive to 0 so it does not interrupt the interrupt
+    LOAD    actSonAlarm ; get the alarm register
+    JZERO   ENDSINTERUPT ; if Sonar is not active
+    
+    
+ZERODEG:
+    AND     Mask23 ; checks to see if the object is in FRONT of the DE2BOT
+    JZERO   NEG44DEG ; nothing set, no turn
+    XOR     Mask23 ; check for BOTH bits set
+    JZERO   NEG44DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    180
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 180 if so mod it 
+    LOAD    eqOut
+    JNEG    add180  ; if angle > 180 mod it; if not add 180
+    LOAD    eq1
+    CALL    Mod180
+    STORE   ANGLE
+    JUMP    sTurn
+    
+add180: 
+    LOAD    eq1
+    ADDI    180
+    STORE   ANGLE
+    JUMP    sTurn
+    
+
+NEG44DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask4 ; checks to see if the object is in FRONT RIGHT of DE2BOT
+    JZERO   POS44DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    224
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 244 
+    LOAD    eqOut
+    JNEG    add136  ; if angle >= 224 sub 224; if not add 136 
+    LOAD    eq1
+    ADDI    -224
+    STORE   ANGLE
+    JUMP    sTurn
+
+add136: 
+    LOAD    eq1
+    ADDI    136
+    STORE   ANGLE
+    Jump    sTurn
+
+    
+POS44DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask1 ; checks to see if the object is in FRONT LEFT of DE2BOT
+    JZERO   NEG90DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    136
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 136 
+    LOAD    eqOut
+    JNEG    add224  ; if angle >= 136 add 224; if not sub 136 
+    LOAD    eq1
+    ADDI    -136
+    STORE   ANGLE
+    JUMP    sTurn
+
+add224: 
+    LOAD    eq1
+    ADDI    224
+    STORE   ANGLE
+    Jump    sTurn
+
+    
+    
+NEG90DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask5 ; checks to see if the object is RIGHT of DE2BOT
+    JZERO   POS90DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    270
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 270 
+    LOAD    eqOut
+    JNEG    add90   ; if angle >= 270 sub 270; if not add 90 
+    LOAD    eq1
+    ADDI    -270
+    STORE   ANGLE
+    JUMP    sTurn
+
+add90: 
+    LOAD    eq1
+    ADDI    90
+    STORE   ANGLE
+    Jump    sTurn   
+
+
+    
+POS90DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask0 ; checks to see if the object is LEFT of DE2BOT
+    JZERO   NEG144DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    90
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 90
+    LOAD    eqOut
+    JNEG    add270  ; if angle >= 90 sub 90; if not add 270 
+    LOAD    eq1
+    ADDI    -90
+    STORE   ANGLE
+    JUMP    sTurn
+
+add270: 
+    LOAD    eq1
+    ADDI    270
+    STORE   ANGLE
+    Jump    sTurn   
+
+
+
+
+NEG144DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
+    JZERO   POS144DEG ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    324
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 324
+    LOAD    eqOut
+    JNEG    add36   ; if angle > 324 sub 324; if not add 36 
+    LOAD    eq1
+    ADDI    -324
+    STORE   ANGLE
+    JUMP    sTurn
+
+add36: 
+    LOAD    eq1
+    ADDI    36
+    STORE   ANGLE
+    Jump    sTurn   
+
+POS144DEG:
+    LOAD    actSonAlarm ; get the alarm register
+    AND     Mask7 ; checks to see if the object is BACK LEFT of DE2BOT
+    JZERO   ENDSINTERUPT ; nothing set, no turn
+    
+    IN      THETA   ;get the current angle we are facing
+    STORE   eq1     
+    LOAD    ZERO
+    ADDI    36
+    STORE   eq2
+    CALL    compare ;check if the angle is greater then 36
+    LOAD    eqOut
+    JNEG    sub36   ; if angle >= 36 sub 36; if not add 324 
+    LOAD    eq1
+    ADDI    324
+    STORE   ANGLE
+    JUMP    sTurn
+
+sub36: 
+    LOAD    eq1
+    ADDI    -36
+    STORE   ANGLE
+    Jump    sTurn       
+    
+    
+
+
+sTurn:              ; Turns the robot to the new angle then jumps to move code
+    CALL    TurnTo
+    JUMP    sMove
+sMove:
+    LOAD    Fmid
+    OUT     RVelcmd
+    ADDI    -15        ; For robot #69.
+    OUT     LVelcmd
+    CALL    Wait2
+    JUMP    ENDSINTERUPT
+ 
+ENDSINTERUPT:
+;   LOAD    ONE
+;   STORE   SonarActive ; unlatches interrupt 
+    LOAD    ZERO
+    ADDI    &HFF
+    OUT     SONAREN ;rearm sonar sensors
+	LOAD    ZERO
+	STORE   SonarTripped
+    LOAD    saveAC
+    JUMP    GoTo
+
+;SonarActive: DW 1
+ANGLEMAG: DW 0
+saveAC: DW 0
+SonarTripped: DW 0
+; Configure the interrupt timer and enable interrupts
+
 
 ;***************************************************************
 ; Scales the points from Feet to MM
@@ -725,230 +996,10 @@ CTIndicateDest:
 
     
 Sonar_ISR: ; Sonar interrupt
-    STORE   saveAC
-;   LOAD    SonarActive ;loads interrupt latch
-;   ADDI    -1
-;   JZERO   RECOVER ; checks to see if we are in the middle of an interrupt already
-;   RETI ; exit ISR
-    
-RECOVER:
-    IN      SONALARM
-    STORE   actSonAlarm ; save the active alarms
-    LOAD    ZERO
-    OUT     SONAREN   ; disable sonar to prevent other alarms
-    
-;   STORE   SonarActive ; set SonarActive to 0 so it does not interrupt the interrupt
-    LOAD    actSonAlarm ; get the alarm register
-    JZERO   ENDSINTERUPT ; if Sonar is not active
-    
-    
-ZERODEG:
-    AND     Mask23 ; checks to see if the object is in FRONT of the DE2BOT
-    JZERO   NEG44DEG ; nothing set, no turn
-    XOR     Mask23 ; check for BOTH bits set
-    JZERO   NEG44DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    180
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 180 if so mod it 
-    LOAD    eqOut
-    JNEG    add180  ; if angle > 180 mod it; if not add 180
-    LOAD    eq1
-    CALL    Mod180
-    STORE   ANGLE
-    JUMP    sTurn
-    
-add180: 
-    LOAD    eq1
-    ADDI    180
-    STORE   ANGLE
-    JUMP    sTurn
-    
-
-NEG44DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask4 ; checks to see if the object is in FRONT RIGHT of DE2BOT
-    JZERO   POS44DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    224
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 244 
-    LOAD    eqOut
-    JNEG    add136  ; if angle >= 224 sub 224; if not add 136 
-    LOAD    eq1
-    ADDI    -224
-    STORE   ANGLE
-    JUMP    sTurn
-
-add136: 
-    LOAD    eq1
-    ADDI    136
-    STORE   ANGLE
-    Jump    sTurn
-
-    
-POS44DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask1 ; checks to see if the object is in FRONT LEFT of DE2BOT
-    JZERO   NEG90DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    136
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 136 
-    LOAD    eqOut
-    JNEG    add224  ; if angle >= 136 add 224; if not sub 136 
-    LOAD    eq1
-    ADDI    -136
-    STORE   ANGLE
-    JUMP    sTurn
-
-add224: 
-    LOAD    eq1
-    ADDI    224
-    STORE   ANGLE
-    Jump    sTurn
-
-    
-    
-NEG90DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask5 ; checks to see if the object is RIGHT of DE2BOT
-    JZERO   POS90DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    270
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 270 
-    LOAD    eqOut
-    JNEG    add90   ; if angle >= 270 sub 270; if not add 90 
-    LOAD    eq1
-    ADDI    -270
-    STORE   ANGLE
-    JUMP    sTurn
-
-add90: 
-    LOAD    eq1
-    ADDI    90
-    STORE   ANGLE
-    Jump    sTurn   
-
-
-    
-POS90DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask0 ; checks to see if the object is LEFT of DE2BOT
-    JZERO   NEG144DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    90
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 90
-    LOAD    eqOut
-    JNEG    add270  ; if angle >= 90 sub 90; if not add 270 
-    LOAD    eq1
-    ADDI    -90
-    STORE   ANGLE
-    JUMP    sTurn
-
-add270: 
-    LOAD    eq1
-    ADDI    270
-    STORE   ANGLE
-    Jump    sTurn   
-
-
-
-
-NEG144DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask6 ; checks to see if the object is BACK RIGHT of DE2BOT
-    JZERO   POS144DEG ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    324
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 324
-    LOAD    eqOut
-    JNEG    add36   ; if angle > 324 sub 324; if not add 36 
-    LOAD    eq1
-    ADDI    -324
-    STORE   ANGLE
-    JUMP    sTurn
-
-add36: 
-    LOAD    eq1
-    ADDI    36
-    STORE   ANGLE
-    Jump    sTurn   
-
-POS144DEG:
-    LOAD    actSonAlarm ; get the alarm register
-    AND     Mask7 ; checks to see if the object is BACK LEFT of DE2BOT
-    JZERO   ENDSINTERUPT ; nothing set, no turn
-    
-    IN      THETA   ;get the current angle we are facing
-    STORE   eq1     
-    LOAD    ZERO
-    ADDI    36
-    STORE   eq2
-    CALL    compare ;check if the angle is greater then 36
-    LOAD    eqOut
-    JNEG    sub36   ; if angle >= 36 sub 36; if not add 324 
-    LOAD    eq1
-    ADDI    324
-    STORE   ANGLE
-    JUMP    sTurn
-
-sub36: 
-    LOAD    eq1
-    ADDI    -36
-    STORE   ANGLE
-    Jump    sTurn       
-    
-    
-
-
-sTurn:              ; Turns the robot to the new angle then jumps to move code
-    CALL    TurnTo
-    JUMP    sMove
-sMove:
-    LOAD    Fmid
-    OUT     RVelcmd
-    ADDI    -15        ; For robot #69.
-    OUT     LVelcmd
-    CALL    Wait2
-    JUMP    ENDSINTERUPT
- 
-ENDSINTERUPT:
-;   LOAD    ONE
-;   STORE   SonarActive ; unlatches interrupt 
-    LOAD    ZERO
-    ADDI    &HFF
-    OUT     SONAREN ;rearm sonar sensors
-    LOAD    saveAC
-    JUMP    GoTo
-
-;SonarActive: DW 1
-ANGLEMAG: DW 0
-saveAC: DW 0
-actSonAlarm: DW 0
-; Configure the interrupt timer and enable interrupts
-
+	Load	ONE
+	STORE	SonarTripped
+	RETI
+	
 
 
 ; Configure the interrupt timer and enable interrupts
