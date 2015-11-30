@@ -48,6 +48,15 @@ Init:
     CALL   SetupI2C    ; Configure the I2C to read the battery voltage
     CALL   BattCheck   ; Get battery voltage (and end if too low).
     OUT    LCD         ; Display batt voltage on LCD
+    ; Reset pointers
+    LOAD    xbak
+    STORE   xptr       
+    LOAD    ybak
+    STORE   yptr
+    LOAD    lbak
+    STORE   lptr
+    LOADI   0
+    STORE   count
 
 WaitForSafety:
     ; Wait for safety switch to be toggled
@@ -81,9 +90,9 @@ WaitForUser:
 ;***************************************************************
 Main: ; "Real" program starts here.
     ; You will probably want to reset the position at the start your project code:
+    CALL   StartLog
     OUT    RESETPOS    ; reset odometer in case wheels moved after programming
     CALL   UARTClear   ; empty the UART receive FIFO of any old data
-    LOAD ZERO
     ;ADDI   &HFF
     ;OUT    SONAREN     ; Enable sonar 
     ;OUT    SONARINT    ; Enable sonar interrupts
@@ -102,14 +111,9 @@ Main: ; "Real" program starts here.
 
 count: DW 0
 
-xptr: DW X01
-yptr: DW Y01
-lptr: DW Points
-
-; Can scale points in Python or here. Just comment out correct lines
-; (Python converts to ticks also)
-;CALL Scale             ; Scales points from Ft to MM
-
+xptr: DW 0
+yptr: DW 0
+lptr: DW 0
 
 ; Go to position
 ; Moves the robot to an X,Y position
@@ -127,15 +131,14 @@ GoTo:
     STORE angle        ; Save angle to next point
     OUT SSEG1
     
-    CALL    TurnTo     ; Turn toward the point
-    LOAD ZERO
+    CALL TurnTo        ; Turn toward the point
+    LOAD ZERO          ; Stop wheels while waiting
     OUT RVELCMD
     OUT LVELCMD
     LOADI 5
-    CALL WAITAC
-    ;JUMP move
-    CALL    curve
-    LOAD ZERO
+    CALL WAITAC        ; Let momentum die
+    CALL curve
+    LOAD ZERO          ; Stop wheels while calculating and waiting
     OUT RVELCMD
     OUT LVELCMD
     ; Should be at point now. Indicate and get next point.
@@ -146,35 +149,10 @@ GoTo:
     STORE   timeOut
     ILOAD   lptr
     CALL    IndicateDest   ; Tell computer where we are
-    
-Pointers:
-    LOAD    xptr           ; Increment pointers
-    ADDI    1              ; |
-    STORE   xptr           ; |
-    LOAD    yptr           ; |
-    ADDI    1              ; |
-    STORE   yptr           ; |
-    LOAD    lptr           ; |
-    ADDI    1              ; |
-    STORE   lptr           ; /
-    LOAD    count          ; Increment counter
-    ADDI    1
-    STORE   count
-    ADDI    -12
-    JZERO   Die           ; If count = 12, then we finished the last point
-    CAll    Wait3
-    LOAD    ZERO
-    OUT     BEEP
-    OUT     LEDS
-    JUMP    GoTo
-
-    ;CALL TurnTo
-    ;LOAD ZERO
-    ;OUT RVelcmd
-    ;OUT LVelcmd
-    ;LOADI 5
-    ;CALL WaitAC        ; Wait half a second
-    JUMP    Die
+    CALL    Pointers       ; Increment pointers and beep
+    LOADI   5
+    CALL    WaitAC
+    JUMP GoTo              ; Loop
 
 ; Don't really need this anymore (save until test curving code)
 move:                  ; Start moving
@@ -203,7 +181,7 @@ atPoint:               ; Made it to the point. Announce and get next point
     OUT LVelcmd        ; stop (or at least slow down)
     ILOAD lptr           ; Need to know which point
     CALL IndicateDest 
-    JUMP Pointers
+    CALL Pointers
     LOAD xptr          ; Increment pointers
     ADDI 1
     STORE xptr
@@ -235,10 +213,13 @@ Die:
 ; Sometimes it's useful to permanently stop execution.
 ; This will also catch the execution if it accidentally
 ; falls through from above.
+    ;LOADI  5
+    ;CALL   WAITAC
     LOAD   Zero        ; Stop everything.
     OUT    LVELCMD
     OUT    RVELCMD
     OUT    SONAREN
+    OUT    BEEP
     LOAD   DEAD        ; An indication that we are dead
     OUT    SSEG2
     CALL   StopLog     ; Disable position logging
@@ -250,6 +231,38 @@ DEAD:      DW &HDEAD   ; Example of a "local variable"
 ;***************************************************************
 ;* Subroutines
 ;***************************************************************
+
+;***************************************************************
+; Increments pointers to look at the next point.
+; Stops the robot if all points have been found
+; Usage: Just call Pointers
+;***************************************************************
+Pointers:
+    ;LOADI   2
+    ;OUT     BEEP           ; Beep at destination
+    ;ILOAD   lptr
+    ;STORE   sh_temp
+    ;LOADI   1
+    ;SHIFT   sh_temp
+    ;OUT LEDS               ; Display point number on LEDS
+    
+    LOAD    xptr           ; Increment pointers
+    ADDI    1              ; |
+    STORE   xptr           ; |
+    LOAD    yptr           ; |
+    ADDI    1              ; |
+    STORE   yptr           ; |
+    LOAD    lptr           ; |
+    ADDI    1              ; |
+    STORE   lptr           ; /
+    LOAD    count          ; Increment counter
+    ADDI    1
+    STORE   count
+    ADDI    -12
+    JZERO   Die           ; If count = 12, then we finished the last point
+    RETURN
+
+sh_temp: DW 0           ; Temp value for shifting
 
 ;***************************************************************
 ; Curves the robot toward a point while moving forward
@@ -503,7 +516,7 @@ turnright:
     JNEG TurnRet
     LOAD Fslow
     OUT LVelcmd
-    LOAD RSlow
+    LOAD Rslow
     OUT RVelcmd
     JUMP turnright
 turnleft:
@@ -517,7 +530,7 @@ turnleft:
     JNEG TurnRet
     LOAD Rslow
     OUT LVelcmd
-    LOAD FSlow
+    LOAD Fslow
     OUT RVelcmd
     JUMP turnleft
 TurnRet:
@@ -833,6 +846,9 @@ WaitAC:
     STORE  WaitTime
     OUT    Timer
 WACLoop:
+    LOAD ZERO
+    ouT RVELCMD
+    OUT LVELCMD
     IN     Timer
     SUB    WaitTime
     JNEG   WACLoop
@@ -978,10 +994,8 @@ UARTClear:
 IndicateDest:
     ; AC contains which destination this is
     AND    LowNibl    ; keep only #s 0-15
-    OUT    LEDS
     STORE  IDNumber
     LOADI  1
-    OUT    BEEP
     STORE  IDFlag     ; set flag for indication
     RETURN
     IDNumber: DW 0
@@ -995,11 +1009,13 @@ CTimer_ISR:
     CALL   UARTSend2
     IN     YPOS
     CALL   UARTSend2
-    ;LOAD   timeOut ;increment timeOut 
-    ;ADDI   1
-    ;STORE  timeOut
-    ;ADDi   -20
-    ;JZERO  Pointers
+    LOAD   timeOut ;increment timeOut 
+    ADDI   1
+    STORE  timeOut
+    ADDi   -20
+    JNEG   NoTimeOut
+    ;CALL   Pointers
+NoTimeOut:
     LOAD   IDFlag ; check if user has request a destination indication
     JPOS   CTIndicateDest ; if yes, do it; otherwise...
     RETI   ; return from interrupt  
@@ -1467,6 +1483,9 @@ Seven:    DW 7
 Eight:    DW 8
 Nine:     DW 9
 Ten:      DW 10
+xbak:     DW X01
+ybak:     DW Y01
+lbak:     DW Points
 
 ; Some bit masks.
 ; Masks of multiple bits can be constructed by ORing these
