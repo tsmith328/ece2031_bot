@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!usr/bin/python
 import os
 
 def sort():
@@ -68,6 +68,55 @@ def sort():
 
     f.close()
 
+def sort2():
+    f = open("points.txt", "r")
+    points = []
+    i = 1
+    for line in f:
+        line = line.rstrip()
+        line = line.split(',')
+        points.append((i, line[0], line[1]))
+        i += 1
+
+    f.close()
+
+    curr = (0,0)
+    s_points = []
+    while i > 1:
+        dist = []
+        for point in points:
+            dist.append((point, (((curr[0]-float(point[1]))**2)+((curr[1]-float(point[2]))**2))**0.5))
+        dist = sorted(dist, key=lambda x: x[1])
+        point = dist.pop(0)[0]
+        s_points.append(point)
+        points.remove(point)
+        i -= 1
+
+    points = s_points
+
+    #print points
+    f = open("sorted.txt.tmp", "w")
+    f.write("TableOfPoints:\n")
+
+    #Write list of X values
+    for i in range(len(points)):
+        f.write("X%02d: DW %s\n" % (i+1, points[i][1]))
+
+    #Write list of Y values
+    f.write("\n")
+    for i in range(len(points)):
+        f.write("Y%02d: DW %s\n" % (i+1, points[i][2]))
+
+    f.write("\n")
+    f.write("Points:\n")
+
+    #Write list of point labels
+    f.write("\n")
+    for i in range(len(points)):
+        f.write("DW %02d\n" %(points[i][0]))
+
+    f.close()
+
 def scale():
     pts = open("sorted.txt.tmp", "r")
     pts_out = open("scaled.txt.tmp", "w")
@@ -112,5 +161,6 @@ def main():
 
 if __name__ == "__main__":
     sort() #Sort points using column method
+    #sort2() #Sort points using nearest neighbor
     scale() #Scale values into odometry ticks (1.05mm/tick)
     main() #Write to assembly file

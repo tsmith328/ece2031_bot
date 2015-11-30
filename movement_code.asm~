@@ -128,16 +128,8 @@ GoTo:
     OUT SSEG1
     
     CALL    TurnTo     ; Turn toward the point
-    LOAD ZERO
-    OUT RVELCMD
-    OUT LVELCMD
-    LOADI 5
-    CALL WAITAC
-    ;JUMP move
-    CALL    curve
-    LOAD ZERO
-    OUT RVELCMD
-    OUT LVELCMD
+    JUMP move
+    ;CALL    curve
     ; Should be at point now. Indicate and get next point.
     ; If no more points, die.
 	LOAD SonarTripped
@@ -203,7 +195,6 @@ atPoint:               ; Made it to the point. Announce and get next point
     OUT LVelcmd        ; stop (or at least slow down)
     ILOAD lptr           ; Need to know which point
     CALL IndicateDest 
-    JUMP Pointers
     LOAD xptr          ; Increment pointers
     ADDI 1
     STORE xptr
@@ -317,14 +308,14 @@ case1: ; angle > theta and | angle - theta| > 180
     SUB angle
     ADD angle1
     STORE turn_ang
-    JUMP curveright
+    JUMP curveleft
 case2: ; angle < theta and | angle - theta| < 180
 	LOAD SonarTripped
 	JPos SonIsTrip
     IN THETA
     SUB angle
     STORE turn_ang
-    JUMP curveright
+    JUMP curveleft
 case3: ; angle < theta and | angle - theta| > 180
 	LOAD SonarTripped
 	JPos SonIsTrip
@@ -334,7 +325,7 @@ case3: ; angle < theta and | angle - theta| > 180
     SUB angle1
     ADD angle
     STORE turn_ang
-    JUMP curveleft
+    JUMP curveright
 case4: ; angle > theta and | angle - theta| < 180
 	LOAD SonarTripped
 	JPos SonIsTrip
@@ -343,7 +334,7 @@ case4: ; angle > theta and | angle - theta| < 180
     LOAD angle
     SUB angle1
     STORE turn_ang
-    JUMP curveleft
+    JUMP curveright
 
 curveleft:          ; Change values of wheels to turn left
 	LOAD SonarTripped
